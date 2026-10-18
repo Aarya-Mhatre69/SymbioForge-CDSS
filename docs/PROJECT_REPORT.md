@@ -13,6 +13,8 @@ disease prevalence 55.3%. Split stratified 70/15/15 (train 642 / val 138 / test 
 Data quality, distributions, missingness by site and correlations: `reports/EDA_report.md`.
 
 ## 2. Design (SDD summary)
+The system orchestrates the Task 1-8 workflows (intake, feature, risk model, second-opinion model, clinical rules, trust, explainer, what-if, test planner) into a synthesizer that produces the patient overview. The live trace is shown in the app's How it works view.
+
 Pipeline: `PatientInput` (pydantic) -> mode-impute optional fields and record which -> `engineer()` (12 features, exact order) -> XGBoost + DNN -> rules (on observed values only) ->
 SHAP -> confidence -> counterfactual -> advisor -> summary/report. Full diagram: ARCHITECTURE.md. Decisions that differ from the first draft of the docs:
 
@@ -40,7 +42,7 @@ stopped at epoch 84.
 | DecisionTree | 0.811±0.025 | 0.819 | 0.847 | 0.855 |
 
 ## 4. Testing report
-20 passed in 37.60s. Covers: feature parity vs `Task5_Feature_Matrix.csv` (max diff < 1e-9), hand-checked formulas, numpy-DNN vs trained-DNN AUC parity, rule tri-state and boundaries, field-level validation errors,
+20 passed in 36.50s. Covers: feature parity vs `Task5_Feature_Matrix.csv` (max diff < 1e-9), hand-checked formulas, numpy-DNN vs trained-DNN AUC parity, rule tri-state and boundaries, field-level validation errors,
 all four demo patients end to end, determinism, A* plan, cleaning steps, and a dashboard smoke test for every demo patient.
 Robustness (`evaluate.py`): invalid inputs rejected 8/8; random valid inputs processed without error 300/300.
 Latency, full pipeline including SHAP, counterfactual and advisor: p50 56 ms, p95 95 ms (target < 500 ms).
@@ -133,11 +135,15 @@ Fairness (test set; groups are small, so differences are weak evidence):
 Limits to state plainly: female patients are a small share of the data; site prevalence differs a lot (so site is a confounder the model cannot see); the test set is small; no external validation.
 
 ## 7. User manual
-1. `streamlit run app.py`. Pick a scripted case under "Load demo patient" or enter values in the sidebar; results update live (use this for what-if exploration).
-2. Leave optional tests as "not available" if not done. The banner shows how many were filled in and what that means.
-3. Read the headline (verdict, confidence, prediction set) and the three chips (rules, models, imputed fields). Any amber warning means treat the result as uncertain.
-4. Tabs: Prediction (probabilities, rule trace, features), Explanation (SHAP and counterfactual), Confidence (trust bands), Next test (A* plan and test ranking), Report (download HTML, print to PDF), System (evaluation, limitations).
-Demo script: "Clear present", "Clear absent", "Borderline / missing data" (advisor shows `thal` could flip the verdict), "Rule vs ML disagreement".
+1. `streamlit run app.py` and open the page. The "Health check" view is for users; "How it works" is for reviewers.
+2. Describe symptoms in your own words (optional) or just press Start. Answer the five short steps; hover the "?" next to any field for a plain explanation.
+   Typical values are pre-filled on the numbers page: replace them with real ones.
+3. Read the overview: risk pattern and estimated chance, how sure the model is, information completeness, and any "things to keep in mind".
+4. Tabs: Why this result (domain impacts, top influences, three independent opinions), Your measurements (each answer against reference ranges, with explanations),
+   What-if (how the estimate moves with cholesterol, blood pressure or peak heart rate), Next steps (what to do, ranked tests, doctor questions, report download).
+5. Ask SymbioForge: use the suggested questions or type your own ("What does thallium mean?").
+6. Quick demo: use the four ready-made examples on the first screen (higher risk, lower risk, borderline with missing tests, rules vs model disagree).
+7. Safety: the page always shows an emergency notice; this is not a diagnosis.
 
 ## 8. Deployment guide
 Local: `pip install -r requirements.txt && streamlit run app.py`. Cloud: push the repo to GitHub, open Streamlit Community Cloud, new app, main file `app.py`,

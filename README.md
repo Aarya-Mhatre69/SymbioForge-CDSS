@@ -46,27 +46,27 @@ For one patient at a time, the system returns:
 
 ```mermaid
 flowchart TD
-    A[Patient input<br/>13 attributes, 3 optional] --> B{Validation<br/>Pydantic}
-    B -- invalid --> B1[Field-level errors]
-    B -- valid --> C[Fill missing optional fields<br/>with training mode and flag them]
-    C --> D[Feature engineering<br/>12 features, fixed order]
-    D --> E[XGBoost<br/>primary verdict]
-    D --> F[DNN<br/>second opinion]
-    A --> G[Rule base R1-R7<br/>observed values only]
-    E --> H[Verdict, P disease]
-    F --> I{Models agree?}
-    G --> J{Rules agree with ML?}
-    H --> K[SHAP explanation]
-    H --> L[Confidence band and<br/>conformal set]
-    H --> M[Counterfactual<br/>sensitivity search]
-    G --> N[A* next-test advisor]
-    I --> L
-    J --> L
-    K --> O[Summary and report]
-    L --> O
-    M --> O
-    N --> O
-    O --> P[Streamlit dashboard<br/>6 tabs + downloadable report]
+    U[User<br/>chat intake: 5 short steps<br/>or free-text description] --> V{Intake agent<br/>validate, flag missing}
+    V -- invalid --> V1[Field-level errors]
+    V -- valid --> F[Feature agent<br/>12 engineered features]
+    F --> O((Orchestrator))
+    O --> R[Risk model<br/>XGBoost, Task 6]
+    O --> D[Second opinion<br/>DNN, Task 7]
+    O --> K[Clinical rules<br/>R1-R7, Tasks 1-2]
+    R --> E[Explainer<br/>SHAP, Task 8]
+    R --> T[Trust agent<br/>bands + conformal, Task 8]
+    D --> T
+    K --> T
+    R --> W[What-if agent<br/>counterfactuals, Task 8]
+    K --> A[Test planner<br/>A*, Task 3]
+    E --> S[Synthesizer<br/>Task 9]
+    T --> S
+    W --> S
+    A --> S
+    R --> S
+    D --> S
+    K --> S
+    S --> UI[Overview + chat<br/>measurements, what-if, next steps, report]
 ```
 
 ## Run it (PowerShell)
