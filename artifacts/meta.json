@@ -1,0 +1,95 @@
+{
+  "primary_model": "XGBoost(tuned)",
+  "xgb_params": {
+    "colsample_bytree": 0.7,
+    "eval_metric": "logloss",
+    "learning_rate": 0.03,
+    "max_depth": 2,
+    "min_child_weight": 3,
+    "n_estimators": 200,
+    "random_state": 42,
+    "reg_lambda": 2.0,
+    "subsample": 0.8
+  },
+  "imputer": {
+    "global_median": {
+      "trestbps": 130.0,
+      "chol": 237.5,
+      "thalch": 140.0,
+      "oldpeak": 0.6
+    },
+    "mode": {
+      "fbs": false,
+      "restecg": "normal",
+      "exang": false,
+      "slope": "flat",
+      "ca": 0.0,
+      "thal": "reversable defect"
+    }
+  },
+  "bands": [
+    {
+      "lo": 0.5,
+      "hi": 0.65,
+      "n": 29,
+      "accuracy": 0.4827586206896552
+    },
+    {
+      "lo": 0.65,
+      "hi": 0.75,
+      "n": 24,
+      "accuracy": 0.6666666666666666
+    },
+    {
+      "lo": 0.75,
+      "hi": 0.85,
+      "n": 28,
+      "accuracy": 0.8571428571428571
+    },
+    {
+      "lo": 0.85,
+      "hi": 0.95,
+      "n": 48,
+      "accuracy": 0.9166666666666666
+    },
+    {
+      "lo": 0.95,
+      "hi": 1.0001,
+      "n": 9,
+      "accuracy": 1.0
+    }
+  ],
+  "conformal": {
+    "alpha": 0.1,
+    "q": 0.6788724064826965,
+    "n_cal": 138
+  },
+  "split_sizes": {
+    "train": 642,
+    "val": 138,
+    "test": 138
+  },
+  "dataset": {
+    "rows_raw": 920,
+    "rows_clean": 918,
+    "prevalence": 0.5533769063180828
+  },
+  "test_metrics": {
+    "xgb": {
+      "accuracy": 0.8188405797101449,
+      "precision": 0.8311688311688312,
+      "recall": 0.8421052631578947,
+      "f1": 0.8366013071895425,
+      "roc_auc": 0.8960101867572157
+    },
+    "dnn": {
+      "accuracy": 0.8188405797101449,
+      "precision": 0.8493150684931506,
+      "recall": 0.8157894736842105,
+      "f1": 0.8322147651006712,
+      "roc_auc": 0.8974957555178268
+    }
+  },
+  "dnn_epochs": 84,
+  "cv_best_auc": 0.876251459148113
+}
