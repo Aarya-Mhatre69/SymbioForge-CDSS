@@ -106,6 +106,7 @@ python train.py                         # re-clean, split, train XGBoost + DNN, 
 python eda.py                           # EDA and correlation report
 python evaluate.py                      # test-set metrics, calibration, fairness, ablation, robustness, latency
 python build_docs.py                    # regenerate docs/PROJECT_REPORT.md from the results
+python build_final_report.py            # regenerate the Word final report
 ```
 Run the rebuild scripts in that order. `train.py` overwrites `artifacts/`, `data/Task4*` and `data/Task5*`.
 
@@ -128,7 +129,7 @@ Run the rebuild scripts in that order. `train.py` overwrites `artifacts/`, `data
 | `data/` | Input dataset, cleaned dataset, feature matrix |
 | `artifacts/` | `xgb.json`, `dnn.json` (served), `dnn.pt` (training checkpoint), `meta.json` |
 | `reports/` | Evaluation JSON, EDA report, model comparison, figures, sample report |
-| `docs/` | `PROJECT_REPORT.md` (full summary), `DELIVERABLES.md` (task checklist) |
+| `docs/` | `SymbioForge_Final_Project_Report.docx/.pdf` (the submission report), `PROJECT_REPORT.md`, `DELIVERABLES.md` |
 | `SPEC.md`, `ARCHITECTURE.md`, `PLAN.md`, `context.md` | Requirements, design and decision log, plan, prior-task reference |
 
 ## Deploy
