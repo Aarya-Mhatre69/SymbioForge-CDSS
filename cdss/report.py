@@ -11,7 +11,7 @@ table{border-collapse:collapse;width:100%}td,th{padding:.25rem .5rem;border-bott
 .disc{margin-top:2rem;font-size:.85rem;border:1px solid #cbd5e0;padding:.6rem}@media print{body{margin:0}}"""
 
 
-def build_report(r: dict) -> str:
+def build_report(r: dict, a: dict | None = None) -> str:
     c, rl = r["confidence"], r["rules"]
     inp = "".join(f"<tr><td>{e(k)}</td><td>{e(str(v)) if v is not None else '<i>not provided</i>'}</td></tr>"
                   for k, v in r["inputs"].items())
@@ -32,10 +32,16 @@ def build_report(r: dict) -> str:
         adv = "<h2>Suggested next tests</h2><ul>" + "".join(
             f"<li>{e(x['test'])} (cost {x['cost']}): P ranges {x['p_min']:.0%} to {x['p_max']:.0%}"
             f"{' - could change the verdict' if x['can_flip_verdict'] else ''}</li>" for x in r["advice"]["ranking"]) + "</ul>"
+    ov = ""
+    if a:
+        dom = "".join(f"<tr><td>{e(d['domain'])}</td><td>{'raises' if d['impact'] > 0 else 'lowers'} the estimate ({d['impact']:+.2f})</td></tr>" for d in a["domains"])
+        qs = "".join(f"<li>{e(q)}</li>" for q in a["questions"])
+        ov = (f"<h2>Overview</h2><p class='v'>{e(a['tier_info']['label'])} - about {a['p']:.0%}</p><p>{e(a['headline'])}</p>"
+              f"<h2>What moved the estimate</h2><table>{dom}</table><h2>Questions to ask your doctor</h2><ul>{qs}</ul>")
     return f"""<!doctype html><html><head><meta charset='utf-8'><title>CDSS report</title><style>{CSS}</style></head><body>
 <h1>SymbioForge CDSS - Clinical decision support report</h1><small>Generated {dt.datetime.now():%Y-%m-%d %H:%M}</small>
 <div class='disc'><b>{e(r['disclaimer'])}</b></div>
-<h2>Result</h2><p class='v'>Disease {e(r['verdict'])} - P(disease) = {r['models']['xgb']:.0%} (XGBoost), {r['models']['dnn']:.0%} (DNN)</p>
+{ov}<h2>Model details</h2><p class='v'>Disease {e(r['verdict'])} - P(disease) = {r['models']['xgb']:.0%} (XGBoost), {r['models']['dnn']:.0%} (DNN)</p>
 <p>Confidence: <b>{e(c['band'])}</b>. Conformal set at {c['conformal_level']:.0%}: {e(' / '.join(c['conformal_set']))}.
 Validation accuracy in this confidence band: {c['validation_accuracy_in_band'] if c['validation_accuracy_in_band'] is None else format(c['validation_accuracy_in_band'], '.0%')} (n={c['validation_n_in_band']}).</p>
 <p>{e(r['summary'])}</p><h2>Warnings</h2>{warns}

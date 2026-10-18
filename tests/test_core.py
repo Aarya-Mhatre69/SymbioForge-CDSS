@@ -109,13 +109,58 @@ def test_cleaning_steps():
     assert len(c) == 2 and c["trestbps"].isna().sum() == 1 and c["target"].tolist() == [0, 1] and c["sex"][0] == "male"
 
 
-def test_dashboard_runs_for_every_demo():
+def test_dashboard_examples_and_how_it_works():
+    from streamlit.testing.v1 import AppTest
+    for name in DEMO_PATIENTS:
+        at = AppTest.from_file(str(ROOT / "app.py"), default_timeout=60).run()
+        assert not at.exception
+        at.button(key=f"ex_{name}").click().run()
+        assert not at.exception, name
+        assert any("model-estimated chance" in m.value for m in at.markdown)
+    at.segmented_control(key="view").set_value("How it works").run()
+    assert not at.exception
+
+
+def test_dashboard_guided_intake_flow():
     from streamlit.testing.v1 import AppTest
     at = AppTest.from_file(str(ROOT / "app.py"), default_timeout=60).run()
-    assert not at.exception
-    for name in DEMO_PATIENTS:
-        at.selectbox(key="demo").select(name).run()
-        assert not at.exception, name
+    at.text_area(key="w_intro").set_value("I'm 58, a man, pressure in my chest when I climb stairs that eases with rest").run()
+    at.button[0].click().run()
+    assert not at.exception and at.session_state["step"] == 1
+    assert at.session_state["ans"]["age"] == 58
+    for _ in range(5):  # Continue through all five steps with defaults
+        btn = [b for b in at.button if b.label in ("Continue", "Analyse my answers")][0]
+        btn.click().run()
+        assert not at.exception
+    assert at.session_state["stage"] == "result"
+
+
+def test_orchestrator_trace_and_analysis():
+    from cdss.orchestrator import assess
+    c = assess(PatientInput(**DEMO_PATIENTS["Borderline / missing data"]))
+    agents = [t["agent"] for t in c["result"]["trace"]]
+    assert agents[0] == "Intake agent" and agents[-1] == "Synthesizer" and len(agents) == 10
+    a = c["analysis"]
+    assert a["tier"] in ("lower", "mid", "higher") and len(a["domains"]) == 4 and len(a["cards"]) == 13
+    assert abs(sum(d["impact"] for d in a["domains"]) - sum(c["result"]["shap_all"].values())) < 1e-9
+    assert set(a["curves"]) == {"chol", "trestbps", "thalch"}
+
+
+def test_glossary_status_and_chat():
+    from cdss import chat
+    from cdss.glossary import status
+    from cdss.orchestrator import assess
+    assert status("chol", {"chol": 250})[0] == "flag" and status("chol", {"chol": 180})[0] == "ok"
+    assert status("thalch", {"thalch": 100, "age": 60})[0] == "flag"   # 100/160 = 62%
+    assert status("ca", {"ca": None})[0] == "missing"
+    p = chat.parse_intro("I'm 58, a man, pressure in my chest when I climb stairs that eases with rest")
+    assert p["age"] == 58 and p["sex"] == "male" and p["pressure"] and p["exertion"] and p["relief"]
+    assert chat.parse_intro("52 year old woman, no chest pain") == {"age": 52, "sex": "female", "pain": False}
+    c = assess(PatientInput(**DEMO_PATIENTS["Clear present"]))
+    assert "thallium" in chat.answer("What does thallium mean?", c).lower()
+    assert "emergency" in chat.answer("I have severe chest pain right now", c).lower()
+    for q in chat.SUGGESTIONS:
+        assert len(chat.answer(q, c)) > 40
 
 
 def test_no_constant_imputed_chol_artifact():

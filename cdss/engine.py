@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import itertools
 import json
+import time
 from functools import lru_cache
 
 import numpy as np
@@ -85,12 +86,15 @@ class Engine:
     # -- explanation --
     def shap_top(self, F: pd.DataFrame, n=5) -> list[dict]:
         """Exact TreeSHAP via XGBoost's native contributions (log-odds units)."""
-        contrib = self.xgb.get_booster().predict(xgb.DMatrix(F[FEATURES]), pred_contribs=True)[0]
-        vals = dict(zip(FEATURES, contrib[:-1]))
+        vals, base = self.shap_all(F)
         top = sorted(vals.items(), key=lambda kv: -abs(kv[1]))[:n]
         row = F.iloc[0]
         return [{"feature": k, "label": LABELS[k], "value": float(row[k]), "shap": float(v),
-                 "direction": "raises risk" if v > 0 else "lowers risk"} for k, v in top], float(contrib[-1])
+                 "direction": "raises risk" if v > 0 else "lowers risk"} for k, v in top], base
+
+    def shap_all(self, F: pd.DataFrame) -> tuple[dict, float]:
+        contrib = self.xgb.get_booster().predict(xgb.DMatrix(F[FEATURES]), pred_contribs=True)[0]
+        return {k: float(v) for k, v in zip(FEATURES, contrib[:-1])}, float(contrib[-1])
 
     def counterfactual(self, raw: dict, imputed: list[str], verdict: str) -> dict:
         """Smallest change set that flips the verdict. 'actionable' = only modifiable fields; 'any' = up to 2 fields."""
@@ -160,27 +164,46 @@ class Engine:
 
     # -- main --
     def predict(self, patient: PatientInput, explain: bool = True) -> dict:
+        trace: list[dict] = []
+
+        def step(agent: str, task: str, fn, note):
+            t = time.perf_counter()
+            res = fn()
+            trace.append({"agent": agent, "task": task, "ms": (time.perf_counter() - t) * 1000, "note": note(res)})
+            return res
+
         raw_in = patient.model_dump()
         rule_in = dict(raw_in)  # unobserved stay None for the rule engine
-        raw, imputed = self.impute(raw_in)
-        F = engineer(pd.DataFrame([raw]))
-        px, pd_ = float(self.p_xgb(F)[0]), float(self.p_dnn(F)[0])
+        raw, imputed = step("Intake agent", "Task 4 data preparation", lambda: self.impute(raw_in),
+                            lambda r: f"validated 13 fields; {len(r[1])} optional field(s) missing, filled and flagged")
+        F = step("Feature agent", "Task 5 feature engineering", lambda: engineer(pd.DataFrame([raw])),
+                 lambda r: "built the 12 model features in fixed order")
+        px = step("Risk model (XGBoost)", "Task 6 machine learning", lambda: float(self.p_xgb(F)[0]),
+                  lambda r: f"P(disease) = {r:.0%}")
+        pd_ = step("Second-opinion model (DNN)", "Task 7 deep learning", lambda: float(self.p_dnn(F)[0]),
+                   lambda r: f"P(disease) = {r:.0%}")
         verdict = "present" if px >= THRESHOLD else "absent"
         disagree = (pd_ >= THRESHOLD) != (px >= THRESHOLD)
-        rr = rules.evaluate(rule_in)
+        rr = step("Clinical rules agent", "Tasks 1-2 knowledge + rule base", lambda: rules.evaluate(rule_in),
+                  lambda r: f"verdict {r['verdict']}; fired {', '.join(r['fired']) or 'none'}; unknown {', '.join(r['unknown']) or 'none'}")
         rule_disagree = rr["verdict"] != "undetermined" and rr["verdict"] != verdict
+        conf = step("Trust agent", "Task 8 trust score + conformal", lambda: self.confidence(px, imputed, patient.age, disagree, rule_disagree),
+                    lambda r: f"confidence {r['band']}; {len(r['warnings'])} warning(s)")
         out = {
             "inputs": raw_in, "imputed": imputed, "features": F.iloc[0].to_dict(),
             "models": {"xgb": px, "dnn": pd_}, "verdict": verdict, "model_disagreement": disagree,
             "rules": {"fired": rr["fired"], "unknown": rr["unknown"], "state": rr["state"], "verdict": rr["verdict"],
                       "agrees_with_ml": None if rr["verdict"] == "undetermined" else not rule_disagree},
-            "confidence": self.confidence(px, imputed, patient.age, disagree, rule_disagree),
-            "disclaimer": DISCLAIMER,
+            "confidence": conf, "disclaimer": DISCLAIMER, "trace": trace,
         }
         if explain:
+            out["shap_all"], _ = step("Explainer agent (SHAP)", "Task 8 explainability", lambda: self.shap_all(F),
+                                      lambda r: "exact per-feature contributions")
             out["explanation"], out["base_value"] = self.shap_top(F)
-            out["counterfactual"] = self.counterfactual(raw, imputed, verdict)
-            out["advice"] = advisor.advise({**rule_in}, patient.missing(), self.prob_fn)
+            out["counterfactual"] = step("What-if agent", "Task 8 counterfactuals", lambda: self.counterfactual(raw, imputed, verdict),
+                                         lambda r: "found a flip" if r["found"] else "robust, no small change flips it")
+            out["advice"] = step("Test planner (A*)", "Task 3 state-space search", lambda: advisor.advise({**rule_in}, patient.missing(), self.prob_fn),
+                                 lambda r: f"plan: {', '.join(r['plan']['tests']) or 'no extra tests needed'}")
             out["summary"] = summarize(out)
         return out
 

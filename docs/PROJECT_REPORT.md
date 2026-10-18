@@ -40,7 +40,7 @@ stopped at epoch 84.
 | DecisionTree | 0.811±0.025 | 0.819 | 0.847 | 0.855 |
 
 ## 4. Testing report
-17 passed in 10.52s. Covers: feature parity vs `Task5_Feature_Matrix.csv` (max diff < 1e-9), hand-checked formulas, numpy-DNN vs trained-DNN AUC parity, rule tri-state and boundaries, field-level validation errors,
+20 passed in 37.60s. Covers: feature parity vs `Task5_Feature_Matrix.csv` (max diff < 1e-9), hand-checked formulas, numpy-DNN vs trained-DNN AUC parity, rule tri-state and boundaries, field-level validation errors,
 all four demo patients end to end, determinism, A* plan, cleaning steps, and a dashboard smoke test for every demo patient.
 Robustness (`evaluate.py`): invalid inputs rejected 8/8; random valid inputs processed without error 300/300.
 Latency, full pipeline including SHAP, counterfactual and advisor: p50 56 ms, p95 95 ms (target < 500 ms).

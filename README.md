@@ -4,6 +4,13 @@
 
 > **Decision support only, not a diagnosis.** Trained on a public research dataset; not clinically validated.
 
+## How it feels to use
+
+1. **Chat intake.** SymbioForge asks short questions in plain language (about you, chest symptoms, check-up numbers, heart tests, optional specialised tests). Every field has a "?" tooltip explaining what it is and why it matters. You can also describe symptoms in your own words and it pre-fills what it understood.
+2. **Overview, not just a label.** You get a risk pattern (lower / intermediate / higher) with an estimated chance, how sure the model is, which parts of your profile moved the estimate, each of your measurements against reference ranges, what-if curves, ranked next tests, and questions to take to a doctor.
+3. **Ask follow-ups.** A built-in chat answers questions from your own analysis ("Why is my result like this?", "What does ECG mean?").
+4. **"How it works" view** (for reviewers) shows the orchestration of the eight Task 1-8 workflows with a live trace, model internals, evaluation, EDA, limitations and the decision log.
+
 ## What it does
 
 For one patient at a time, the system returns:
@@ -18,6 +25,7 @@ For one patient at a time, the system returns:
 | Reliability warnings | Missing optional tests, out-of-range age, model or rule disagreement |
 | "What would flip it" | Model-sensitivity search over plausible changes (not clinical advice) |
 | Next-test advice | A* search (Task 3) over the missing tests, ranked by whether they could change the verdict |
+| Depth analysis | Risk broken into domains (symptoms, stress test, cholesterol, overall profile), measurement cards, what-if curves, doctor questions |
 | Report | Print-ready HTML (print to PDF) |
 
 ## Technology
@@ -31,7 +39,7 @@ For one patient at a time, the system returns:
 | Validation | Pydantic v2 (field-level errors) |
 | Explainability | XGBoost native TreeSHAP, conformal prediction, counterfactual search |
 | Reasoning | Rule-based forward chaining, A* state-space search |
-| Evaluation | pytest (17 tests), matplotlib |
+| Evaluation | pytest (20 tests), matplotlib |
 | Cost | Zero: all open source, runs locally |
 
 ## Flowchart
@@ -93,7 +101,7 @@ The trained models (`artifacts/`) and evaluation outputs (`reports/`) are commit
 
 ```powershell
 pip install -r requirements-train.txt   # adds torch, matplotlib, pytest
-python -m pytest -q                     # 17 tests
+python -m pytest -q                     # 20 tests
 python train.py                         # re-clean, split, train XGBoost + DNN, calibrate trust bands (several minutes)
 python eda.py                           # EDA and correlation report
 python evaluate.py                      # test-set metrics, calibration, fairness, ablation, robustness, latency
@@ -105,12 +113,16 @@ Run the rebuild scripts in that order. `train.py` overwrites `artifacts/`, `data
 
 | Path | Purpose |
 |---|---|
-| `app.py` | Streamlit dashboard |
+| `app.py` | Streamlit entry point (view switch) |
 | `cdss/features.py` | Feature formulas (single source of truth) and Task 4 cleaning |
 | `cdss/schemas.py` | Input validation |
 | `cdss/rules.py` | Task 2 rule base, three-valued logic |
 | `cdss/advisor.py` | Task 3 A* next-test planner |
 | `cdss/engine.py` | Inference pipeline, SHAP, counterfactuals, confidence, summary |
+| `cdss/orchestrator.py` | Runs the workflows and builds the patient overview |
+| `cdss/glossary.py` | Plain-language meaning of each input and reference ranges |
+| `cdss/chat.py` | Rule-based chat: intro parsing and follow-up answers |
+| `ui/` | Streamlit views: `assess.py` (user flow), `mechanics.py` (How it works), `style.py` |
 | `cdss/report.py` | HTML report generator |
 | `train.py`, `eda.py`, `evaluate.py`, `build_docs.py` | Reproducible build and evaluation scripts |
 | `data/` | Input dataset, cleaned dataset, feature matrix |
