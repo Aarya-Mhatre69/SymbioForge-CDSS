@@ -46,7 +46,7 @@ def main() -> int:
             return 1
         url = f"http://localhost:{CLINIC_PORT}/index.html"
         print(f"\nDemo is ready.\n  Clinic website (start here): {url}\n  SymbioForge app:             http://localhost:{APP_PORT}\n"
-              f"  Clinician queue (passcode: demo): http://localhost:{APP_PORT}/?view=clinician\n\nPress Ctrl+C to stop both.")
+              f"\nPress Ctrl+C to stop both.")
         webbrowser.open(url)
         while all(p.poll() is None for p in procs):
             time.sleep(1)

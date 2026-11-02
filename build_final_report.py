@@ -17,8 +17,6 @@ R = Path(__file__).parent
 FIG = R / "reports" / "figures"
 DOCF = R / "docs" / "figures"
 ev = json.loads((R / "reports/evaluation.json").read_text())
-s1 = json.loads((R / "reports/stage1_evaluation.json").read_text())
-ovr = json.loads((R / "reports/outlier_validation.json").read_text())
 meta = json.loads((R / "artifacts/meta.json").read_text())
 comp = pd.read_csv(R / "reports/Task6_model_comparison.csv")
 BLUE, HEAD = RGBColor(0x1F, 0x4E, 0x78), "2F5496"
@@ -225,11 +223,8 @@ bullets([
 ])
 h2("3.4 User interface")
 para("The user view is a guided chat: five short steps, plain-language questions, and a tooltip on every field explaining what it is and why it matters. Chest pain is "
-     "classified from three yes/no questions rather than by asking for a medical term. The result page leads with a risk pattern, the estimated chance, confidence and "
+     "classified from three yes/no questions rather than by asking for a medical term. For the demonstration the system is reached through a fictional clinic website (folder clinic/): its button redirects into the app, which links back to the clinic and its booking page; python run_demo.py starts both. The result page leads with a risk pattern, the estimated chance, confidence and "
      "information completeness; details sit in four tabs. A separate 'How it works' view serves reviewers.")
-para("The flow has two stages. After a red-flag safety screen, stage 1 (home checkup) needs only history, blood pressure, blood tests and a resting ECG and shows a risk tier, never a "
-     "percentage. If stress-test results exist they can be added for the full multi-workflow analysis (stage 2). With explicit consent the overview can be sent to a demo "
-     "clinician queue, ranked by urgency. The module is reached from a fictional demo clinic website (folder clinic/): the clinic site is the front door, its button redirects into the app, and the app links back to the clinic and to its booking page. python run_demo.py starts both.")
 figure(DOCF / "ui_intake.jpg", 4.6, "Figure 2. Guided chat intake with free-text pre-fill.")
 figure(DOCF / "ui_overview.jpg", 4.6, "Figure 3. Overview: risk pattern, estimate, confidence and information completeness.")
 figure(DOCF / "ui_how_it_works.jpg", 4.6, "Figure 4. 'How it works' view: orchestration of the workflows for reviewers.")
@@ -272,41 +267,6 @@ para("Global SHAP ranks: " + ", ".join(f"{k} ({v:.2f})" for k, v in gs) + ". The
      "not reassuring.")
 figure(FIG / "shap_global.png", 3.4, "Figure 8. Global feature importance (mean |SHAP|, test set).")
 
-h2("4.5 Stage-1 (home checkup) model and the base-rate problem")
-para("The full model needs stress-test results that nobody has at home, and it was trained on patients already referred for heart tests (disease rate "
-     f"{meta['dataset']['prevalence']:.0%}). A second, 'stage-1' model uses only history, blood pressure, blood tests and a resting ECG. "
-     f"On the same test split it reaches AUC {s1['auc']:.3f} (full model {s1['full_model_auc']:.3f}), so little discrimination is lost.")
-tr = s1["tier_outcomes"]
-table([[k, tr[k]["n"], f"{tr[k]['disease_rate']:.0%}"] for k in ("lower", "mid", "higher")],
-      ["Stage-1 tier (probability thresholds 0.30 / 0.60)", "Test patients", "Share with disease"], [3.6, 1.6, 1.8])
-a, b = s1["flag_check_up_or_higher"], s1["flag_see_clinician"]
-rows = [[p, f"{a['ppv_by_prevalence'][p]:.0%}", f"{b['ppv_by_prevalence'][p]:.0%}"] for p in ("55%", "20%", "10%", "5%", "2%")]
-table(rows, ["Disease prevalence in the people screened", f"Flags that are right, 'worth a check-up' or above (sens {a['sensitivity']:.0%}, spec {a['specificity']:.0%})",
-             f"Flags that are right, 'see a clinician' (sens {b['sensitivity']:.0%}, spec {b['specificity']:.0%})"], [2.2, 2.6, 2.2], 8.5)
-para("This is why stage 1 never shows a percentage. The training population has a 55% disease rate; visitors to a clinic website will be far lower, and at 5-10% "
-     "most flags would be false alarms even though the model discriminates well. Stage 1 is therefore worded as a screening flag that leads to a clinic check, "
-     "not a finding. The tier groups contain few patients (34 / 28 / 76), so their disease rates are approximate.", size=9)
-
-h2("4.6 Outlier and edge-case validation")
-oo = ovr["oof"]["full_model"]
-o1 = ovr["oof"]["stage1_model"]
-para("Before claiming anything, behaviour on unusual inputs was tested three ways (script validate_outliers.py).")
-bullets([
-    ("Out-of-fold accuracy on outlier rows: ", f"{oo['any_outlier']['n']} rows have a value beyond 1.5 x IQR (blood pressure, cholesterol, ST depression). For the full model, "
-     f"AUC is {oo['any_outlier']['auc']:.2f} on these rows against {oo['no_outlier']['auc']:.2f} on the rest (accuracy {oo['any_outlier']['accuracy']:.2f} vs "
-     f"{oo['no_outlier']['accuracy']:.2f}); the stage-1 model shows the same pattern ({o1['any_outlier']['auc']:.2f} vs {o1['no_outlier']['auc']:.2f}). "
-     "The groups are small, but the direction supports not trusting estimates on unusual values."),
-    ("Sweeps across valid ranges: ", f"{ovr['sweeps']['n']} sweeps of age, blood pressure, cholesterol, peak heart rate and ST depression on four anchor patients. "
-     f"No step jumped by more than {ovr['sweeps']['worst_jump']:.2f}, so the models are smooth. But {len(ovr['sweeps']['against_clinical_direction'])} sweeps moved against the "
-     "expected clinical direction (blood pressure, cholesterol and, on one anchor, age; swings of only 0.01 to 0.10). In this historical data those two have weak or inverted effects, so the what-if "
-     "curves now carry a warning and 'actionable' suggestions only ever lower a value."),
-    ("Extreme corners: ", f"all {ovr['corners']['tested']} combinations of minimum and maximum valid inputs produced finite outputs; the plausibility guard withheld the estimate "
-     "for every one of them. On the real dataset it withholds for about 2% of patients."),
-])
-para("Mitigation implemented: a plausibility guard (cdss/plausibility.py). A peak heart rate far above the age-expected maximum, very low blood pressure or extreme "
-     "cholesterol raise a hard flag and cap confidence at 'low'; a value outside the 1st-99th percentile of training data caps confidence at 'moderate'; two or more "
-     "such values (or any hard flag, or any value beyond the training minimum and maximum) withhold the estimate and show the guideline measurement cards instead. Every probability output (opinion cards, report, chat, what-if curves) is gated on this guard.", size=9)
-
 # ---------------------------------------------------------------- 5
 h1("5. Testing Report")
 table([
@@ -319,16 +279,14 @@ table([
     ["A* planner", "Returns the cheapest decisive test set (slope + vessel count, cost 12) for the borderline case", "Pass"],
     ["Cleaning", "Zero-to-missing, duplicate removal, target binarisation, no constant filler for imputed cholesterol", "Pass"],
     ["Chat and glossary", "Intro parsing, status cut-offs, every suggested question answered, emergency wording", "Pass"],
-    ["Safety and guard", "Red-flag symptoms end the flow before any model runs; implausible or out-of-range values withhold the estimate; stage 1 never shows a percentage", "Pass"],
-    ["Clinic queue", "Nothing stored without consent; urgent cases sorted first; disagreement bumps a case up; counterfactuals only lower modifiable factors", "Pass"],
     ["Dashboard", "Streamlit test runs the guided flow and every example through to the result page, and the How-it-works view", "Pass"],
 ], ["Area", "What is checked", "Result"], [1.2, 5.2, 0.6])
 rb, lat = ev["robustness"], ev["latency_ms_full_pipeline"]
-para(f"31 automated tests pass. Robustness: invalid inputs rejected {rb['invalid_inputs_rejected']}; 300 random valid patients processed without error "
+para(f"22 automated tests pass. Robustness: invalid inputs rejected {rb['invalid_inputs_rejected']}; 300 random valid patients processed without error "
      f"({rb['fuzz_valid_inputs_ok']}). Latency of the full pipeline including SHAP, counterfactual and planner: median {lat['p50']:.0f} ms, 95th percentile "
-     f"{lat['p95']:.0f} ms (target under 500 ms). Two independent code reviews found 15 defects. The first found six (a constant imputation value that acted as a hidden "
+     f"{lat['p95']:.0f} ms (target under 500 ms). An independent code review found six defects (a constant imputation value that acted as a hidden "
      "disease marker, miscalibrated confidence labels, an ambiguous headline probability, a spec mismatch, misleading 'actionable' counterfactuals and rule "
-     "statistics that used imputed values); five were fixed and one was recorded as a deliberate design change. The second found nine more in the newest code (bypasses of the guard and of the red-flag screen, probabilities leaking when an estimate was withheld, queue ordering and migration, an open clinician view, a guard that failed open, and stage-1 behaviour driven by referral bias); all nine were fixed.")
+     "statistics that used imputed values); five were fixed and one was recorded as a deliberate design change.")
 para("Domain and user validation: scripted cases and automated checks only. No clinician or end-user study has been carried out; this is listed as future work.", size=9, italic=True)
 
 # ---------------------------------------------------------------- 6
@@ -336,10 +294,6 @@ h1("6. Responsible AI Assessment")
 table([
     ["Intended use", "Educational decision support for one patient at a time. Emergency and not-a-diagnosis notices appear on every screen and in the report."],
     ["Data", "Public research data from four hospitals, collected decades ago. Not representative of any current population."],
-    ["Safety screen", "Red-flag symptoms (severe pain now, pain spreading, breathlessness at rest, fainting, cold sweat) stop the flow with an emergency message before any model runs. Examples and 'Edit my answers' cannot skip it."],
-    ["Base rate", "Training data are referred patients (55% disease). Stage 1 therefore shows a tier only and says it is a screening flag; Section 4.5 quantifies the false-alarm rate in lower-prevalence populations."],
-    ["Outliers", "Estimates are withheld for implausible values, values beyond the training minimum or maximum, or two edge values (about 2% of real patients); outlier rows were less accurate out-of-fold (Section 4.6)."],
-    ["Consent and data", "Nothing is stored unless the user ticks consent and sends the overview; the demo queue uses fictional data and a shared demo passcode instead of real login. A real deployment would need authentication, encryption, audit logs and compliance (regulated medical-device software; health-data law such as India's DPDP Act)."],
     ["Missing data", "Flagged, never silent. Two or more filled fields block a 'high' confidence band. Rules never run on guessed values."],
     ["Out-of-distribution", "Age outside the 28-77 training range triggers a warning."],
     ["Transparency", "SHAP per patient, plain-language reasons, rule trace, agreement chips, a visible trace of every workflow. The DNN has no per-patient explanation, and the UI says so."],
@@ -400,8 +354,8 @@ h1("9. Deliverables Checklist")
 table([
     ["9", "Application (running instance)", "streamlit run app.py"],
     ["9", "Integrated source code", "cdss/, ui/, app.py, train.py, evaluate.py, eda.py"],
-    ["9", "Dashboard", "Health check view (two stages), How it works view, clinician queue (demo)"],
-    ["9", "Clinic integration demo", "clinic/ (static demo clinic site that redirects into the app); run_demo.py"],
+    ["9", "Dashboard", "Health check view and How it works view"],
+    ["9", "Clinic front-door demo", "clinic/ (static demo site that redirects into the app); run_demo.py"],
     ["9", "Report generator", "cdss/report.py; download button; reports/sample_report.html"],
     ["9", "Deployment documentation", "README.md and Section 8 of this report"],
     ["10", "Evaluation report", "Section 4; reports/evaluation.json"],
@@ -417,7 +371,7 @@ table([
 h1("10. Conclusion and Future Enhancements")
 para("The experiments are integrated into one system whose value lies in the combination: eight workflows produce independent evidence, an orchestrator reconciles "
      f"them, and the patient receives an explained, uncertainty-aware overview rather than a bare label. On the held-out test split XGBoost reaches "
-     f"{ev['models']['xgb']['accuracy']:.1%} accuracy and {ev['models']['xgb']['roc_auc']:.3f} AUC, the system answers in about {lat['p50']:.0f} ms, and all 31 automated "
+     f"{ev['models']['xgb']['accuracy']:.1%} accuracy and {ev['models']['xgb']['roc_auc']:.3f} AUC, the system answers in about {lat['p50']:.0f} ms, and all 22 automated "
      "tests pass. The prototype is honest about its limits: small test set, historical single-source data, no clinical validation.")
 para("Future work: repeated cross-validation and site-held-out validation; calibrated probabilities (isotonic); a clinician and user study; an optional language-model "
      "layer for the chat, restricted to the computed analysis; and multilingual support.")

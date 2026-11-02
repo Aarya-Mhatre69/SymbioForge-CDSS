@@ -3,4 +3,3 @@ __pycache__/
 .pytest_cache/
 .claude/
 .venv/
-data/queue.db

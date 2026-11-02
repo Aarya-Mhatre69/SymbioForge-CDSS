@@ -114,12 +114,9 @@ def test_dashboard_examples_and_how_it_works():
     for name in DEMO_PATIENTS:
         at = AppTest.from_file(str(ROOT / "app.py"), default_timeout=60).run()
         assert not at.exception
-        at.button(key=f"ex_{name}_2").click().run()
-        assert at.session_state["step"] == 1 and "ctx" not in at.session_state          # safety screen first, no result yet
-        [b for b in at.button if b.label == "Continue"][0].click().run()
+        at.button(key=f"ex_{name}").click().run()
         assert not at.exception, name
-        assert at.session_state["stage"] == "result"
-        assert any("model-estimated chance" in m.value or "Cannot estimate" in m.value or "outside what the model" in m.value for m in at.markdown)
+        assert any("model-estimated chance" in m.value for m in at.markdown)
     at.segmented_control(key="view").set_value("How it works").run()
     assert not at.exception
 
@@ -131,19 +128,11 @@ def test_dashboard_guided_intake_flow():
     at.button[0].click().run()
     assert not at.exception and at.session_state["step"] == 1
     assert at.session_state["ans"]["age"] == 58
-    for _ in range(5):  # safety check + four stage-1 steps with defaults
-        btn = [b for b in at.button if b.label in ("Continue", "See my result")][0]
-        btn.click().run()
-        assert not at.exception
-    assert at.session_state["stage"] == "result" and at.session_state["ctx"]["stage"] == 1
-    # add stress-test results -> full analysis
-    [b for b in at.button if b.label == "I have stress-test results"][0].click().run()
-    assert at.session_state["stage"] == "intake" and at.session_state["step"] == 6
-    for _ in range(2):
+    for _ in range(5):  # Continue through all five steps with defaults
         btn = [b for b in at.button if b.label in ("Continue", "Analyse my answers")][0]
         btn.click().run()
         assert not at.exception
-    assert at.session_state["ctx"]["stage"] == 2
+    assert at.session_state["stage"] == "result"
 
 
 def test_orchestrator_trace_and_analysis():
@@ -179,132 +168,6 @@ def test_no_constant_imputed_chol_artifact():
     assert len(imputed) == 0 or imputed.chol.nunique() > 20  # imputed values must not collapse to one constant
 
 
-def test_plausibility_guard():
-    from cdss import plausibility
-    from cdss.orchestrator import assess
-    assert plausibility.check({"age": 90, "thalch": 200})["hard"]            # far above age-expected max heart rate
-    assert not plausibility.check({"age": 52, "trestbps": 130, "chol": 210})["outside"]
-    assert not plausibility.reliable(plausibility.check({"age": 100}))      # beyond the training min-max: withheld
-    assert not plausibility.reliable(plausibility.check({"age": 20}))
-    assert plausibility.reliable(plausibility.check({"age": 52, "trestbps": 130, "chol": 210}))
-    pl = plausibility.check({"age": 52, "chol": 440})                        # edge-of-range only: still estimated, band capped
-    assert plausibility.reliable(pl)
-    conf = plausibility.apply({"band": "high", "warnings": []}, pl)
-    assert conf["band"] in ("moderate", "high")
-    from cdss.report import build_report
-    from cdss import chat
-    import re as _re
-    for bad in ({**DEMO_PATIENTS["Clear present"], "age": 90, "thalch": 200}, {**DEMO_PATIENTS["Clear present"], "age": 100}):
-        c = assess(PatientInput(**bad))
-        assert c["analysis"]["tier"] == "unsure"
-        html = _re.sub(r"<[^>]+>", " ", build_report(c["result"], c["analysis"]))
-        assert "withheld" in html.lower() and "about" not in html.split("Model details")[0]
-        assert "P(disease)" not in html and "new P=" not in html and "P ranges" not in html
-        assert chat.answer("what is the second opinion?", c) == chat.WITHHELD and chat.answer("what if my cholesterol were lower?", c) == chat.WITHHELD
-
-
-def test_stage1_model_tiers_and_guard():
-    from cdss.stage1 import Stage1Input, get_stage1
-    s1 = get_stage1()
-    keys = ("age", "sex", "cp", "trestbps", "chol", "fbs", "restecg")
-    hi = s1.assess(Stage1Input(**{k: DEMO_PATIENTS["Clear present"][k] for k in keys}))
-    lo = s1.assess(Stage1Input(**{k: DEMO_PATIENTS["Clear absent"][k] for k in keys}))
-    from cdss.stage1 import tier_for
-    assert tier_for(0.84, ["present"]) == "higher" and tier_for(0.84, ["absent", "present"]) == "mid" and tier_for(0.10, ["absent"]) == "lower"
-    # 'Clear present' reports no chest pain: the pain-free presentation is capped at 'mid' by policy (referral-bias protection)
-    assert hi["analysis"]["tier"] == "mid" and "capped" in hi["analysis"]["headline"] and lo["analysis"]["tier"] == "lower" and hi["stage"] == 1
-    assert "p" in hi["analysis"] and "%" not in hi["analysis"]["headline"]       # tier only, no percentage in the narrative
-    typ = s1.assess(Stage1Input(age=35, sex="female", cp="typical angina", trestbps=130, chol=210, fbs=False, restecg="normal"))
-    assert typ["analysis"]["tier"] in ("mid", "higher")                           # classic angina is never 'lower'
-    silent = s1.assess(Stage1Input(age=62, sex="male", cp="asymptomatic", trestbps=150, chol=260, fbs=True, restecg="lv hypertrophy"))
-    assert silent["analysis"]["tier"] != "higher"                                  # pain-free presentation is capped
-    odd = s1.assess(Stage1Input(**{**{k: DEMO_PATIENTS["Clear present"][k] for k in keys}, "chol": 590, "trestbps": 215}))
-    assert odd["analysis"]["tier"] == "unsure"
-
-
-def test_counterfactual_only_lowers_modifiable_factors():
-    from cdss.engine import get_engine
-    r = get_engine().predict(PatientInput(**DEMO_PATIENTS["Borderline / missing data"]))
-    act = r["counterfactual"]["actionable"]
-    if act:
-        assert all(v["to"] < v["from"] for v in act["changes"].values())
-
-
-def test_clinic_queue_requires_consent_and_orders_by_urgency(tmp_path, monkeypatch):
-    from cdss import queue as q
-    from cdss.orchestrator import assess
-    from cdss.stage1 import Stage1Input, get_stage1
-    monkeypatch.setattr(q, "DB", tmp_path / "q.db")
-    keys = ("age", "sex", "cp", "trestbps", "chol", "fbs", "restecg")
-    lo = get_stage1().assess(Stage1Input(**{k: DEMO_PATIENTS["Clear absent"][k] for k in keys}))
-    hi = get_stage1().assess(Stage1Input(**{k: DEMO_PATIENTS["Clear present"][k] for k in keys}))
-    with pytest.raises(PermissionError):
-        q.submit(lo, "x", consent=False)
-    assert q.cases() == []
-    q.submit(lo, "low", True)
-    q.submit(hi, "high", True)
-    rows = q.cases()
-    assert [r["name"] for r in rows] == ["high", "low"]
-    q.mark_reviewed(rows[0]["id"])
-    assert q.cases("new")[0]["name"] == "low"
-    # an unreliable ('unsure') case must not outrank an older 'higher' case just because it is newer
-    unsure = {**lo, "analysis": {**lo["analysis"], "tier": "unsure", "tier_info": {"label": "x"}}, "result": {**lo["result"], "confidence": {"warnings": ["not shown as reliable"]}}}
-    hi2 = {**hi, "analysis": {**hi["analysis"], "tier": "higher"}}
-    q.submit(hi2, "older-higher", True)
-    q.submit(unsure, "newer-unsure", True)
-    assert [r["name"] for r in q.cases("new")][:2] == ["older-higher", "newer-unsure"]
-
-
-def test_red_flag_stops_the_flow():
-    from streamlit.testing.v1 import AppTest
-    at = AppTest.from_file(str(ROOT / "app.py"), default_timeout=60).run()
-    at.button[0].click().run()                       # Start
-    at.checkbox(key="w_rf0").check().run()
-    [b for b in at.button if b.label == "Continue"][0].click().run()
-    assert at.session_state["stage"] == "emergency" and "ctx" not in at.session_state
-    assert any("urgent medical help" in m.value for m in at.markdown)
-
-
-def test_edit_my_answers_returns_to_safety_screen():
-    from streamlit.testing.v1 import AppTest
-    at = AppTest.from_file(str(ROOT / "app.py"), default_timeout=60).run()
-    at.button(key="ex_Clear present_2").click().run()
-    [b for b in at.button if b.label == "Continue"][0].click().run()
-    [b for b in at.button if b.label == "Edit my answers"][0].click().run()
-    assert at.session_state["step"] == 1 and at.session_state["stage"] == "intake"
-    assert "screened" not in at.session_state or not at.session_state["screened"]
-
-
-def test_clinician_view_is_gated():
-    from streamlit.testing.v1 import AppTest
-    at = AppTest.from_file(str(ROOT / "app.py"), default_timeout=60)
-    at.query_params["view"] = "clinician"
-    at.run()
-    assert any("Passcode" in t.label for t in at.text_input) and not any("Load sample cases" in b.label for b in at.button)
-    at.text_input(key="clin_pw").set_value("wrong").run()
-    [b for b in at.button if b.label == "Open queue"][0].click().run()
-    assert not at.session_state["clin_ok"] if "clin_ok" in at.session_state else True
-    at.text_input(key="clin_pw").set_value("demo").run()
-    [b for b in at.button if b.label == "Open queue"][0].click().run()
-    assert at.session_state["clin_ok"] and any("Load sample cases" in b.label for b in at.button)
-
-
-def test_ranges_file_is_required(monkeypatch):
-    from cdss import plausibility
-    monkeypatch.setattr(plausibility, "_RANGES", None)
-    monkeypatch.setattr(plausibility, "ARTIFACTS", ROOT / "nonexistent")
-    with pytest.raises(FileNotFoundError):
-        plausibility.check({"age": 50})
-
-
-def test_clinician_view_renders():
-    from streamlit.testing.v1 import AppTest
-    at = AppTest.from_file(str(ROOT / "app.py"), default_timeout=60)
-    at.query_params["view"] = "clinician"
-    at.run()
-    assert not at.exception
-
-
 def test_clinic_round_trip_links():
     from streamlit.testing.v1 import AppTest
     at = AppTest.from_file(str(ROOT / "app.py"), default_timeout=60)
@@ -312,24 +175,20 @@ def test_clinic_round_trip_links():
     at.run()
     assert not at.exception and at.session_state["from_clinic"]
     assert any("Back to Meridian" in m.value and "localhost:8600/index.html" in m.value for m in at.markdown)
-    at.button(key="ex_Clear present_2").click().run()
-    [b for b in at.button if b.label == "Continue"][0].click().run()
-    assert at.session_state["stage"] == "result"
-    # without ?from=clinic there is no back link
-    at2 = AppTest.from_file(str(ROOT / "app.py"), default_timeout=60).run()
+    at.button(key="ex_Clear present").click().run()
+    assert not at.exception and at.session_state["stage"] == "result"
+    at2 = AppTest.from_file(str(ROOT / "app.py"), default_timeout=60).run()      # no ?from=clinic: no back link
     assert not any("Back to Meridian" in m.value for m in at2.markdown)
 
 
 def test_clinic_site_wiring():
     import re
     c = ROOT / "clinic"
-    cfg = (c / "config.js").read_text()
-    assert "localhost:8501" in cfg
-    for page in ("index.html", "services.html", "heart-check.html", "book.html", "clinicians.html"):
+    assert "localhost:8501" in (c / "config.js").read_text()
+    for page in ("index.html", "services.html", "heart-check.html", "book.html"):
         html = (c / page).read_text(encoding="utf-8")
         assert "config.js" in html and "app.js" in html and "styles.css" in html, page
         for href in re.findall(r'href="([^"#?]+\.html)"', html):
             assert (c / href).exists(), (page, href)
     hc = (c / "heart-check.html").read_text(encoding="utf-8")
-    assert "data-app-link" in hc and "<iframe" not in hc                   # redirect button, not an embedded frame
-    assert 'data-app-query="view=clinician"' in (c / "clinicians.html").read_text(encoding="utf-8")
+    assert "data-app-link" in hc and "<iframe" not in hc

@@ -33,6 +33,7 @@ Legend: [x] produced here · [~] regenerated on the supplied dataset, needs your
 | Application (running instance) | [x] `streamlit run app.py` |
 | Integrated source code | [x] `cdss/`, `app.py`, `train.py`, `evaluate.py` |
 | Dashboard | [x] Two views: guided chat Health check (overview, measurements, what-if, next steps, follow-up chat) and How it works (architecture + live trace, internals, evaluation, EDA, limits) |
+| Clinic front-door demo | [x] `clinic/` (static demo site) redirecting into the app; `python run_demo.py` |
 | Report generator | [x] `cdss/report.py`, download button; sample `reports/sample_report.html` |
 | Deployment documentation | [x] README.md + PROJECT_REPORT.md section 8 |
 | Public URL | [ ] needs you: push to GitHub and connect Streamlit Community Cloud |
@@ -44,6 +45,6 @@ Legend: [x] produced here · [~] regenerated on the supplied dataset, needs your
 | Responsible AI report | [x] section 6 |
 | User manual | [x] section 7 |
 | SRS / SDD | [x] SPEC.md (requirements), ARCHITECTURE.md (design), section 2 |
-| Testing report | [x] section 4 (31 automated tests) |
+| Testing report | [x] section 4 (22 automated tests) |
 | Final project report | [x] PROJECT_REPORT.md |
 | Deployment guide | [x] section 8 |
