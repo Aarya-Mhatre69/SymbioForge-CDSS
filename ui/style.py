@@ -9,6 +9,7 @@ h1,h2,h3{letter-spacing:-.01em}
 #MainMenu,footer{visibility:hidden}
 .brand{display:flex;align-items:baseline;gap:.6rem;margin-bottom:.2rem}
 .brand b{font-size:1.45rem;letter-spacing:-.02em}.brand span{color:var(--muted);font-size:.92rem}
+.backlink{font-size:.85rem;color:var(--accent)!important;text-decoration:none}.backlink:hover{text-decoration:underline}
 .stepper{display:flex;gap:6px;margin:.6rem 0 1rem}
 .stepper i{flex:1;height:4px;border-radius:4px;background:var(--line)}.stepper i.on{background:var(--accent)}
 .steplabel{color:var(--muted);font-size:.82rem;margin-top:-.4rem;margin-bottom:.4rem}

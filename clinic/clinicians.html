@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>For clinicians | Meridian Heart &amp; Family Clinic (DEMO)</title>
 <link rel="stylesheet" href="styles.css">
+<script src="config.js"></script>
 <script src="app.js" defer></script>
 </head>
 <body>
@@ -32,7 +33,7 @@
 <h3>How the triage queue works</h3>
 <p>Patients who consent can send their heart health overview to the clinic. Each case joins the queue and is sorted by tier, so the most urgent cases are seen first. Patients who do not consent are never added.</p>
 </section>
-<p class="actions"><a class="btn" id="clinician-link" href="http://localhost:8501/?embed=true&amp;view=clinician" target="_blank" rel="noopener" data-app-url="http://localhost:8501/?embed=true" data-app-query="view=clinician">Open the clinician view</a></p>
+<p class="actions"><a class="btn" id="clinician-link" href="http://localhost:8501/?view=clinician" data-app-link data-app-query="view=clinician">Open the clinician view</a></p>
 <p class="note"><strong>Demo notice:</strong> this demo uses a shared demo passcode ("demo") instead of real login and fictional data only. A real deployment would require authentication and proper data protection.</p>
 </div>
 </main>

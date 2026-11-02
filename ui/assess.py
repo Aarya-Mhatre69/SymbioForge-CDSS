@@ -14,6 +14,7 @@ from cdss.report import build_report, build_report_stage1
 from cdss.schemas import PatientInput, field_errors
 from cdss.stage1 import Stage1Input, get_stage1
 from . import style
+from .config import CLINIC_NAME, CLINIC_URL
 
 RAW = ["age", "sex", "cp", "trestbps", "chol", "fbs", "restecg", "thalch", "exang", "oldpeak", "slope", "ca", "thal"]
 S1 = ["age", "sex", "cp", "trestbps", "chol", "fbs", "restecg"]
@@ -492,6 +493,10 @@ def _tab_next(ctx):
     st.markdown("**Questions to ask your doctor**")
     for qn in a["questions"]:
         st.markdown(f"- {qn}")
+    if ss.get("from_clinic"):
+        b1, b2 = st.columns(2)
+        b1.link_button("Book a home checkup", f"{CLINIC_URL}/book.html", type="primary", use_container_width=True)
+        b2.link_button(f"Back to {CLINIC_NAME}", f"{CLINIC_URL}/index.html", use_container_width=True)
     d1, d2 = st.columns(2)
     html = build_report_stage1(ctx) if ctx.get("stage") == 1 else build_report(r, a)
     d1.download_button("Download report", html, "symbioforge_report.html", "text/html", type="primary")

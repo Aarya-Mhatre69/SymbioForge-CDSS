@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Heart health check | Meridian Heart &amp; Family Clinic (DEMO)</title>
 <link rel="stylesheet" href="styles.css">
+<script src="config.js"></script>
 <script src="app.js" defer></script>
 </head>
 <body>
@@ -27,11 +28,29 @@
 <main id="main">
 <div class="wrap">
 <h1>Heart health check</h1>
-<p class="note"><strong>Not a diagnosis.</strong> In an emergency call your local emergency number.</p>
-<p><a id="app-link" href="http://localhost:8501/?embed=true" target="_blank" rel="noopener" data-app-link>Open the heart health check in a new tab</a></p>
-<iframe id="app" class="app-frame" title="Heart health check" data-app-url="http://localhost:8501/?embed=true" src="about:blank"></iframe>
-<noscript><p class="note">JavaScript is off, so the check cannot load here. Use the link above to open it in a new tab.</p></noscript>
-<p class="muted">If the frame stays blank, the demo app is probably not running. Start it locally, then reload this page.</p>
+<p class="lead">A short guided check, powered by SymbioForge, that gives you a plain-language overview of what stands out in your heart health and what to do next. It takes about three minutes.</p>
+<p class="note"><strong>Not a diagnosis.</strong> If you have severe chest pain, pain spreading to the arm or jaw, breathlessness or fainting, call your local emergency number now instead of using this tool.</p>
+
+<h2>What happens</h2>
+<ol class="steps">
+<li><strong>A quick safety check.</strong> We first ask whether anything urgent is happening.</li>
+<li><strong>A few simple questions.</strong> Your age, any chest discomfort, and a few check-up numbers. Every term is explained as you go.</li>
+<li><strong>Your overview.</strong> What stands out, how sure the tool is, and which tests would help most. You can then book a home checkup or a clinic visit.</li>
+</ol>
+
+<h2>What helps to have ready</h2>
+<ul>
+<li>Your blood pressure and cholesterol numbers, if you know them.</li>
+<li>A resting ECG result, if you have had one. A home-visit technician can record these for you.</li>
+<li>Optional: results of a treadmill stress test, for a fuller analysis.</li>
+</ul>
+
+<div class="actions">
+<a id="app-link" class="btn" href="http://localhost:8501/?from=clinic" data-app-link data-app-query="from=clinic">Continue to the heart health check</a>
+<a class="btn secondary" href="book.html">Book a home checkup instead</a>
+</div>
+<p class="muted">You will be taken to the SymbioForge app, which has a link back to this clinic. Nothing is sent to the clinic unless you choose to share your overview. If the page does not open, the demo app is probably not running: start it with <code>python run_demo.py</code>.</p>
+<noscript><p class="note">JavaScript is off, so the button uses the default address http://localhost:8501/?from=clinic.</p></noscript>
 </div>
 </main>
 <footer class="site">

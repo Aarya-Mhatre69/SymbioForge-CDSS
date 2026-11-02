@@ -7,3 +7,8 @@ A static presentation shell showing where the SymbioForge heart-health app could
 - Change the app URL: edit `data-app-url` in `heart-check.html` and `clinicians.html`.
 - Booking form data stays in this browser's localStorage (`meridian_bookings`); nothing is sent anywhere.
 - No login, no real data, no external resources. Demo only, not medical advice.
+
+## How it connects to SymbioForge
+This site is the front door. "Start the heart health check" opens `heart-check.html` (what to expect), whose button redirects to the SymbioForge app (`?from=clinic`).
+The app then shows a link back here and, after a result, a "Book a home checkup" button that opens `book.html`. No health data is passed in URLs.
+The app address is set once in `config.js`. From the project root, `python run_demo.py` starts both and opens this site.

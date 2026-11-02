@@ -303,3 +303,33 @@ def test_clinician_view_renders():
     at.query_params["view"] = "clinician"
     at.run()
     assert not at.exception
+
+
+def test_clinic_round_trip_links():
+    from streamlit.testing.v1 import AppTest
+    at = AppTest.from_file(str(ROOT / "app.py"), default_timeout=60)
+    at.query_params["from"] = "clinic"
+    at.run()
+    assert not at.exception and at.session_state["from_clinic"]
+    assert any("Back to Meridian" in m.value and "localhost:8600/index.html" in m.value for m in at.markdown)
+    at.button(key="ex_Clear present_2").click().run()
+    [b for b in at.button if b.label == "Continue"][0].click().run()
+    assert at.session_state["stage"] == "result"
+    # without ?from=clinic there is no back link
+    at2 = AppTest.from_file(str(ROOT / "app.py"), default_timeout=60).run()
+    assert not any("Back to Meridian" in m.value for m in at2.markdown)
+
+
+def test_clinic_site_wiring():
+    import re
+    c = ROOT / "clinic"
+    cfg = (c / "config.js").read_text()
+    assert "localhost:8501" in cfg
+    for page in ("index.html", "services.html", "heart-check.html", "book.html", "clinicians.html"):
+        html = (c / page).read_text(encoding="utf-8")
+        assert "config.js" in html and "app.js" in html and "styles.css" in html, page
+        for href in re.findall(r'href="([^"#?]+\.html)"', html):
+            assert (c / href).exists(), (page, href)
+    hc = (c / "heart-check.html").read_text(encoding="utf-8")
+    assert "data-app-link" in hc and "<iframe" not in hc                   # redirect button, not an embedded frame
+    assert 'data-app-query="view=clinician"' in (c / "clinicians.html").read_text(encoding="utf-8")

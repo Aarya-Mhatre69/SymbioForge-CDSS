@@ -21,12 +21,29 @@ SymbioForge is designed as a pre-visit triage module inside a clinic site, not a
 4. **Flag to the clinic.** With explicit consent the overview goes to a demo clinician queue (`?view=clinician`, demo passcode `demo`), most urgent first; a model/rule disagreement moves a case up.
 5. **Plausibility guard.** Implausible or out-of-range values withhold the estimate instead of guessing.
 
-A fictional demo clinic site (`clinic/`) embeds the module. Run the app and the site side by side:
+**The clinic website is the front door.** A fictional demo clinic site (`clinic/`) is what a visitor opens first:
+
+```
+Clinic home  ->  "Start the heart health check"  ->  intro page  ->  "Continue"  (redirect)  ->  SymbioForge app
+     ^                                                                                              |
+     |------ "Back to the clinic" / "Book a home checkup" (links in the app, shown when you arrived from the clinic) <-----|
+```
+
+One command starts everything and opens the clinic site:
+
+```powershell
+python run_demo.py
+```
+
+That serves the clinic site at http://localhost:8600 (start here) and the app at http://localhost:8501 (clinician queue: `/?view=clinician`, passcode `demo`). Press Ctrl+C to stop both.
+Or start them separately:
 
 ```powershell
 streamlit run app.py                                   # http://localhost:8501
-python -m http.server 8600 --directory clinic          # http://localhost:8600  (open heart-check.html)
+python -m http.server 8600 --directory clinic          # http://localhost:8600
 ```
+
+The app address the clinic buttons use is set in `clinic/config.js`; the clinic address the app links back to is set by the `SYMBIOFORGE_CLINIC_URL` environment variable (default http://localhost:8600).
 
 Demo only: shared demo passcode instead of authentication, fictional data. A real deployment would be regulated medical-device software and health-data law would apply.
 
@@ -58,7 +75,7 @@ For one patient at a time, the system returns:
 | Validation | Pydantic v2 (field-level errors) |
 | Explainability | XGBoost native TreeSHAP, conformal prediction, counterfactual search |
 | Reasoning | Rule-based forward chaining, A* state-space search |
-| Evaluation | pytest (29 tests), matplotlib |
+| Evaluation | pytest (31 tests), matplotlib |
 | Cost | Zero: all open source, runs locally |
 
 ## Flowchart
@@ -120,7 +137,7 @@ The trained models (`artifacts/`) and evaluation outputs (`reports/`) are commit
 
 ```powershell
 pip install -r requirements-train.txt   # adds torch, matplotlib, pytest
-python -m pytest -q                     # 29 tests
+python -m pytest -q                     # 31 tests
 python train.py                         # re-clean, split, train XGBoost + DNN, calibrate trust bands (several minutes)
 python eda.py                           # EDA and correlation report
 python train_stage1.py                  # stage-1 (home checkup) model, trust bands, training ranges
@@ -148,7 +165,8 @@ Run the rebuild scripts in that order. `train.py` overwrites `artifacts/`, `data
 | `cdss/stage1.py` | Stage-1 home-checkup model (tier only) |
 | `cdss/plausibility.py` | Implausible and out-of-range input guard |
 | `cdss/queue.py`, `ui/clinician.py` | Demo clinician queue with consent |
-| `clinic/` | Static demo clinic website that embeds the app |
+| `clinic/` | Static demo clinic website: the front door that redirects into the app |
+| `run_demo.py` | One command: starts the clinic site and the app, opens the clinic |
 | `cdss/report.py` | HTML report generator |
 | `train.py`, `eda.py`, `evaluate.py`, `build_docs.py` | Reproducible build and evaluation scripts |
 | `data/` | Input dataset, cleaned dataset, feature matrix |

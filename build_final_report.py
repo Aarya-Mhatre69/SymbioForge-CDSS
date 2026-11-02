@@ -229,7 +229,7 @@ para("The user view is a guided chat: five short steps, plain-language questions
      "information completeness; details sit in four tabs. A separate 'How it works' view serves reviewers.")
 para("The flow has two stages. After a red-flag safety screen, stage 1 (home checkup) needs only history, blood pressure, blood tests and a resting ECG and shows a risk tier, never a "
      "percentage. If stress-test results exist they can be added for the full multi-workflow analysis (stage 2). With explicit consent the overview can be sent to a demo "
-     "clinician queue, ranked by urgency. The module is shown embedded in a fictional demo clinic website (folder clinic/).")
+     "clinician queue, ranked by urgency. The module is reached from a fictional demo clinic website (folder clinic/): the clinic site is the front door, its button redirects into the app, and the app links back to the clinic and to its booking page. python run_demo.py starts both.")
 figure(DOCF / "ui_intake.jpg", 4.6, "Figure 2. Guided chat intake with free-text pre-fill.")
 figure(DOCF / "ui_overview.jpg", 4.6, "Figure 3. Overview: risk pattern, estimate, confidence and information completeness.")
 figure(DOCF / "ui_how_it_works.jpg", 4.6, "Figure 4. 'How it works' view: orchestration of the workflows for reviewers.")
@@ -324,7 +324,7 @@ table([
     ["Dashboard", "Streamlit test runs the guided flow and every example through to the result page, and the How-it-works view", "Pass"],
 ], ["Area", "What is checked", "Result"], [1.2, 5.2, 0.6])
 rb, lat = ev["robustness"], ev["latency_ms_full_pipeline"]
-para(f"29 automated tests pass. Robustness: invalid inputs rejected {rb['invalid_inputs_rejected']}; 300 random valid patients processed without error "
+para(f"31 automated tests pass. Robustness: invalid inputs rejected {rb['invalid_inputs_rejected']}; 300 random valid patients processed without error "
      f"({rb['fuzz_valid_inputs_ok']}). Latency of the full pipeline including SHAP, counterfactual and planner: median {lat['p50']:.0f} ms, 95th percentile "
      f"{lat['p95']:.0f} ms (target under 500 ms). Two independent code reviews found 15 defects. The first found six (a constant imputation value that acted as a hidden "
      "disease marker, miscalibrated confidence labels, an ambiguous headline probability, a spec mismatch, misleading 'actionable' counterfactuals and rule "
@@ -401,7 +401,7 @@ table([
     ["9", "Application (running instance)", "streamlit run app.py"],
     ["9", "Integrated source code", "cdss/, ui/, app.py, train.py, evaluate.py, eda.py"],
     ["9", "Dashboard", "Health check view (two stages), How it works view, clinician queue (demo)"],
-    ["9", "Clinic integration demo", "clinic/ (static demo clinic site embedding the app)"],
+    ["9", "Clinic integration demo", "clinic/ (static demo clinic site that redirects into the app); run_demo.py"],
     ["9", "Report generator", "cdss/report.py; download button; reports/sample_report.html"],
     ["9", "Deployment documentation", "README.md and Section 8 of this report"],
     ["10", "Evaluation report", "Section 4; reports/evaluation.json"],
@@ -417,7 +417,7 @@ table([
 h1("10. Conclusion and Future Enhancements")
 para("The experiments are integrated into one system whose value lies in the combination: eight workflows produce independent evidence, an orchestrator reconciles "
      f"them, and the patient receives an explained, uncertainty-aware overview rather than a bare label. On the held-out test split XGBoost reaches "
-     f"{ev['models']['xgb']['accuracy']:.1%} accuracy and {ev['models']['xgb']['roc_auc']:.3f} AUC, the system answers in about {lat['p50']:.0f} ms, and all 29 automated "
+     f"{ev['models']['xgb']['accuracy']:.1%} accuracy and {ev['models']['xgb']['roc_auc']:.3f} AUC, the system answers in about {lat['p50']:.0f} ms, and all 31 automated "
      "tests pass. The prototype is honest about its limits: small test set, historical single-source data, no clinical validation.")
 para("Future work: repeated cross-validation and site-held-out validation; calibrated probabilities (isotonic); a clinician and user study; an optional language-model "
      "layer for the chat, restricted to the computed analysis; and multilingual support.")

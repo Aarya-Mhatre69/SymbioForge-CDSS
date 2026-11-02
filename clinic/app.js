@@ -3,21 +3,12 @@
   document.documentElement.classList.add('js');
   var KEY = 'meridian_bookings';
 
-  // Embedded app: set iframe src and fallback link from data-app-url.
-  var frame = document.getElementById('app');
-  if (frame) {
-    var url = frame.getAttribute('data-app-url');
-    frame.src = url;
-    var link = document.getElementById('app-link');
-    if (link) link.href = url;
-  }
-
-  // Clinician link: base url + &view=clinician
-  var cl = document.getElementById('clinician-link');
-  if (cl) {
-    var base = cl.getAttribute('data-app-url');
-    var q = cl.getAttribute('data-app-query');
-    cl.href = base + (base.indexOf('?') === -1 ? '?' : '&') + q;
+  // Links to the SymbioForge app: base address from config.js, optional query from data-app-query.
+  var base = (window.SYMBIOFORGE_APP_URL || 'http://localhost:8501').replace(/\/+$/, '');
+  var links = document.querySelectorAll('[data-app-link]');
+  for (var i = 0; i < links.length; i++) {
+    var q = links[i].getAttribute('data-app-query');
+    links[i].href = base + '/' + (q ? '?' + q : '');
   }
 
   // Bookings
