@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Book a home checkup | Meridian Heart &amp; Family Clinic (DEMO)</title>
+<link rel="stylesheet" href="styles.css">
+<script src="app.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<div class="demo-bar"><strong>DEMO:</strong> fictional clinic for a lab project. Not a real service.</div>
+<header class="site">
+<div class="wrap head">
+<a class="brand" href="index.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-8-5.2-8-11a4.5 4.5 0 0 1 8-2.8A4.5 4.5 0 0 1 20 10c0 5.8-8 11-8 11z"/></svg>Meridian Heart &amp; Family Clinic</a>
+<nav aria-label="Main">
+<ul>
+<li><a href="index.html">Home</a></li>
+<li><a href="services.html">Services</a></li>
+<li><a href="heart-check.html">Heart health check</a></li>
+<li><a href="book.html" aria-current="page">Book a home checkup</a></li>
+<li><a href="clinicians.html">For clinicians</a></li>
+</ul>
+</nav>
+</div>
+</header>
+<main id="main">
+<div class="wrap">
+<h1>Book a home checkup</h1>
+<p class="lead">A technician visits for blood pressure, a resting ECG, fasting blood sugar and a cholesterol panel.</p>
+<p class="note nojs">JavaScript is turned off, so this demo form cannot save or confirm anything. Nothing is sent either way.</p>
+<div id="confirmation" class="note ok" role="status" tabindex="-1" hidden></div>
+<form id="booking-form" novalidate style="margin-top:16px">
+<div>
+<label for="name">Full name</label>
+<input type="text" id="name" name="name" autocomplete="off" required>
+<div class="field-error" id="name-err"></div>
+</div>
+<div>
+<label for="phone">Phone</label>
+<input type="tel" id="phone" name="phone" placeholder="000-000-0000" autocomplete="off" required>
+<div class="field-error" id="phone-err"></div>
+</div>
+<div>
+<label for="date">Preferred date</label>
+<input type="date" id="date" name="date" required>
+<div class="field-error" id="date-err"></div>
+</div>
+<div>
+<label for="window">Time window</label>
+<select id="window" name="window" required>
+<option value="">Choose a window</option>
+<option>Morning (7:00 to 10:00, fasting)</option>
+<option>Late morning (10:00 to 12:00)</option>
+<option>Afternoon (12:00 to 16:00)</option>
+</select>
+<div class="field-error" id="window-err"></div>
+</div>
+<div>
+<label for="address">Address note</label>
+<textarea id="address" name="address" rows="3" placeholder="Fictional example: Flat 0, 000 Example Street. Use no real address."></textarea>
+</div>
+<div>
+<div class="check">
+<input type="checkbox" id="consent" name="consent" required>
+<label for="consent">I understand this is a demo and nothing will be sent to a real clinic.</label>
+</div>
+<div class="field-error" id="consent-err"></div>
+</div>
+<div><button class="btn" type="submit">Request demo booking</button></div>
+</form>
+
+<h2>Bookings stored in this browser</h2>
+<p class="muted">Kept only in this browser's local storage.</p>
+<noscript><p class="note">Stored bookings are shown here only when JavaScript is on.</p></noscript>
+<ul id="booking-list" class="bookings" aria-live="polite"></ul>
+<button class="btn secondary" type="button" id="clear-bookings">Clear demo bookings</button>
+</div>
+</main>
+<footer class="site">
+<div class="wrap">
+<p class="disclaimer"><strong>DEMO ONLY.</strong> Meridian Heart &amp; Family Clinic is fictional. This site is a presentation shell for a lab project. Nothing here is medical advice, and no data is sent anywhere. In an emergency call your local emergency number.</p>
+<p>Phone 000-000-0000 &middot; 000 Example Street, Placeholder City</p>
+</div>
+</footer>
+</body>
+</html>

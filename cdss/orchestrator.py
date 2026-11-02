@@ -6,6 +6,7 @@ import time
 
 import numpy as np
 import pandas as pd
+from scipy.stats import spearmanr
 
 from .advisor import COST
 from .engine import Engine, get_engine
@@ -30,6 +31,7 @@ TIERS = {
     "lower": dict(label="Lower-risk pattern", color="#2f855a", icon="●"),
     "mid": dict(label="Intermediate pattern", color="#b7791f", icon="●"),
     "higher": dict(label="Higher-risk pattern", color="#c53030", icon="●"),
+    "unsure": dict(label="Cannot estimate reliably", color="#667085", icon="●"),
 }
 CURVES = {"chol": range(120, 361, 10), "trestbps": range(90, 191, 5), "thalch": range(80, 201, 5)}
 MODIFIABLE = ("trestbps", "chol", "fbs")
@@ -75,7 +77,18 @@ def what_if_curves(e: Engine, raw: dict) -> dict:
     out = {}
     for f, xs in CURVES.items():
         rows = [{**raw, f: x} for x in xs]
-        out[f] = {"x": list(xs), "p": [float(v) for v in e.p_xgb(engineer(pd.DataFrame(rows)))], "current": raw[f]}
+        p = [float(v) for v in e.p_xgb(engineer(pd.DataFrame(rows)))]
+        rho = spearmanr(list(xs), p).correlation
+        rho = 0.0 if np.isnan(rho) else float(rho)
+        swing = max(p) - min(p)
+        expected = -1 if f == "thalch" else 1  # clinically expected direction of risk
+        caution = None
+        if swing < 0.05:
+            caution = "In this dataset this measurement barely moves the estimate, so do not read the curve as advice."
+        elif rho * expected < -0.3:
+            caution = ("In this dataset the estimate moves opposite to the usual clinical expectation (a known quirk of this historical data), "
+                       "so do not read the curve as advice.")
+        out[f] = {"x": list(xs), "p": p, "current": raw[f], "swing": swing, "spearman": rho, "caution": caution}
     return out
 
 
@@ -103,7 +116,7 @@ def next_steps(r: dict, tier: str) -> dict:
     steps = []
     if tier == "higher":
         steps.append("Book an appointment with a doctor or cardiologist soon and bring these results.")
-    elif tier == "mid":
+    elif tier in ("mid", "unsure"):
         steps.append("Discuss these results with a doctor; the picture is not clear-cut and a clinician can weigh it properly.")
     else:
         steps.append("Keep up routine check-ups. Low estimates are not a guarantee, especially if symptoms change.")
@@ -117,7 +130,10 @@ def next_steps(r: dict, tier: str) -> dict:
 def headline(r: dict, tier: str, domains: list[dict]) -> str:
     p = r["models"]["xgb"]
     top = domains[0]
-    word = {"lower": "lower", "mid": "intermediate", "higher": "higher"}[tier]
+    if tier == "unsure":
+        return ("Some of your values are unusual or outside the range this tool was trained on, so it is not giving a risk estimate. "
+                "The measurement cards show how each value compares with reference ranges; please review them with a clinician.")
+    word ={"lower": "lower", "mid": "intermediate", "higher": "higher"}[tier]
     s = (f"Your answers resemble patterns seen in people with {word} likelihood of heart disease "
          f"(model estimate about {p:.0%}). The biggest influence was your {top['domain'].lower()}, which "
          f"{'raises' if top['impact'] > 0 else 'lowers'} the estimate.")
@@ -131,13 +147,13 @@ def headline(r: dict, tier: str, domains: list[dict]) -> str:
 def build_analysis(e: Engine, r: dict) -> dict:
     t0 = time.perf_counter()
     raw_filled = {**r["inputs"], **{k: e.mode[k] for k in r["imputed"]}}
-    tier = tier_for(r["models"]["xgb"], r["confidence"]["conformal_set"])
+    tier = tier_for(r["models"]["xgb"], r["confidence"]["conformal_set"]) if r["estimate_reliable"] else "unsure"
     domains = domain_impacts(r["shap_all"])
     cards = measurement_cards(r["inputs"])
     curves = what_if_curves(e, raw_filled)
     steps = next_steps(r, tier)
     a = {
-        "tier": tier, "tier_info": TIERS[tier], "p": r["models"]["xgb"], "domains": domains, "drivers": drivers(r),
+        "tier": tier, "tier_info": TIERS[tier], "reliable": r["estimate_reliable"], "p": r["models"]["xgb"], "domains": domains, "drivers": drivers(r),
         "cards": cards, "curves": curves, "next": steps, "questions": doctor_questions(r, cards),
         "headline": headline(r, tier, domains),
         "completeness": {"given": 13 - len(r["imputed"]), "of": 13},

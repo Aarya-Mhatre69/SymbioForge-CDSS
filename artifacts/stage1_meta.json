@@ -1,0 +1,51 @@
+{
+  "params": {
+    "n_estimators": 100,
+    "max_depth": 2,
+    "learning_rate": 0.03,
+    "subsample": 0.8,
+    "colsample_bytree": 0.8,
+    "min_child_weight": 3,
+    "reg_lambda": 2.0,
+    "random_state": 42,
+    "eval_metric": "logloss"
+  },
+  "bands": [
+    {
+      "lo": 0.5,
+      "hi": 0.65,
+      "n": 43,
+      "accuracy": 0.5581395348837209
+    },
+    {
+      "lo": 0.65,
+      "hi": 0.75,
+      "n": 28,
+      "accuracy": 0.8571428571428571
+    },
+    {
+      "lo": 0.75,
+      "hi": 0.85,
+      "n": 57,
+      "accuracy": 0.8596491228070176
+    },
+    {
+      "lo": 0.85,
+      "hi": 0.95,
+      "n": 10,
+      "accuracy": 0.9
+    },
+    {
+      "lo": 0.95,
+      "hi": 1.0001,
+      "n": 0,
+      "accuracy": null
+    }
+  ],
+  "conformal": {
+    "alpha": 0.1,
+    "q": 0.6900628209114075,
+    "n_cal": 138
+  },
+  "cv_auc": 0.8355827645850906
+}

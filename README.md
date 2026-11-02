@@ -11,6 +11,25 @@
 3. **Ask follow-ups.** A built-in chat answers questions from your own analysis ("Why is my result like this?", "What does ECG mean?").
 4. **"How it works" view** (for reviewers) shows the orchestration of the eight Task 1-8 workflows with a live trace, model internals, evaluation, EDA, limitations and the decision log.
 
+## Where it fits: a clinic website
+
+SymbioForge is designed as a pre-visit triage module inside a clinic site, not a stand-alone diagnosis tool:
+
+1. **Safety check first.** Red-flag symptoms stop the flow with an emergency message before any model runs.
+2. **Stage 1, home checkup.** Uses only what a person or a home-visit technician can supply (history, blood pressure, blood tests, resting ECG). Shows a risk *tier*, never a percentage, because the training data are patients already referred for heart tests.
+3. **Stage 2, stress-test add-on.** If stress-test results exist, the full multi-workflow analysis runs and shows a probability.
+4. **Flag to the clinic.** With explicit consent the overview goes to a demo clinician queue (`?view=clinician`, demo passcode `demo`), most urgent first; a model/rule disagreement moves a case up.
+5. **Plausibility guard.** Implausible or out-of-range values withhold the estimate instead of guessing.
+
+A fictional demo clinic site (`clinic/`) embeds the module. Run the app and the site side by side:
+
+```powershell
+streamlit run app.py                                   # http://localhost:8501
+python -m http.server 8600 --directory clinic          # http://localhost:8600  (open heart-check.html)
+```
+
+Demo only: shared demo passcode instead of authentication, fictional data. A real deployment would be regulated medical-device software and health-data law would apply.
+
 ## What it does
 
 For one patient at a time, the system returns:
@@ -39,7 +58,7 @@ For one patient at a time, the system returns:
 | Validation | Pydantic v2 (field-level errors) |
 | Explainability | XGBoost native TreeSHAP, conformal prediction, counterfactual search |
 | Reasoning | Rule-based forward chaining, A* state-space search |
-| Evaluation | pytest (20 tests), matplotlib |
+| Evaluation | pytest (29 tests), matplotlib |
 | Cost | Zero: all open source, runs locally |
 
 ## Flowchart
@@ -101,9 +120,11 @@ The trained models (`artifacts/`) and evaluation outputs (`reports/`) are commit
 
 ```powershell
 pip install -r requirements-train.txt   # adds torch, matplotlib, pytest
-python -m pytest -q                     # 20 tests
+python -m pytest -q                     # 29 tests
 python train.py                         # re-clean, split, train XGBoost + DNN, calibrate trust bands (several minutes)
 python eda.py                           # EDA and correlation report
+python train_stage1.py                  # stage-1 (home checkup) model, trust bands, training ranges
+python validate_outliers.py             # outlier and edge-case validation report
 python evaluate.py                      # test-set metrics, calibration, fairness, ablation, robustness, latency
 python build_docs.py                    # regenerate docs/PROJECT_REPORT.md from the results
 python build_final_report.py            # regenerate the Word final report
@@ -124,6 +145,10 @@ Run the rebuild scripts in that order. `train.py` overwrites `artifacts/`, `data
 | `cdss/glossary.py` | Plain-language meaning of each input and reference ranges |
 | `cdss/chat.py` | Rule-based chat: intro parsing and follow-up answers |
 | `ui/` | Streamlit views: `assess.py` (user flow), `mechanics.py` (How it works), `style.py` |
+| `cdss/stage1.py` | Stage-1 home-checkup model (tier only) |
+| `cdss/plausibility.py` | Implausible and out-of-range input guard |
+| `cdss/queue.py`, `ui/clinician.py` | Demo clinician queue with consent |
+| `clinic/` | Static demo clinic website that embeds the app |
 | `cdss/report.py` | HTML report generator |
 | `train.py`, `eda.py`, `evaluate.py`, `build_docs.py` | Reproducible build and evaluation scripts |
 | `data/` | Input dataset, cleaned dataset, feature matrix |

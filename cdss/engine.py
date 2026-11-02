@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 import xgboost as xgb
 
-from . import ARTIFACTS, DISCLAIMER, advisor, rules
+from . import ARTIFACTS, DISCLAIMER, advisor, plausibility, rules
 from .features import FEATURES, OPTIONAL, engineer
 from .schemas import TRAIN_AGE_RANGE, PatientInput
 
@@ -102,7 +102,7 @@ class Engine:
         fields = [f for f in CF_GRID if f not in imputed]
 
         def search(allowed: set[str], max_k: int, capped: bool = False):
-            opts = {f: [v for v in CF_GRID[f] if v != raw[f] and (not capped or abs(v - raw[f]) <= PLAUSIBLE * raw[f])]
+            opts = {f: [v for v in CF_GRID[f] if v != raw[f] and (not capped or 0 < raw[f] - v <= PLAUSIBLE * raw[f])]
                     for f in fields if f in allowed}
             opts = {f: v for f, v in opts.items() if v}
             rows, meta = [], []
@@ -189,7 +189,10 @@ class Engine:
         rule_disagree = rr["verdict"] != "undetermined" and rr["verdict"] != verdict
         conf = step("Trust agent", "Task 8 trust score + conformal", lambda: self.confidence(px, imputed, patient.age, disagree, rule_disagree),
                     lambda r: f"confidence {r['band']}; {len(r['warnings'])} warning(s)")
+        pl = plausibility.check(raw_in)
+        conf = plausibility.apply(conf, pl)
         out = {
+            "plausibility": pl, "estimate_reliable": plausibility.reliable(pl),
             "inputs": raw_in, "imputed": imputed, "features": F.iloc[0].to_dict(),
             "models": {"xgb": px, "dnn": pd_}, "verdict": verdict, "model_disagreement": disagree,
             "rules": {"fired": rr["fired"], "unknown": rr["unknown"], "state": rr["state"], "verdict": rr["verdict"],

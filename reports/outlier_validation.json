@@ -1,0 +1,195 @@
+{
+  "oof": {
+    "full_model": {
+      "overall": {
+        "n": 918,
+        "accuracy": 0.7952069716775599,
+        "auc": 0.8786825427309393,
+        "prevalence": 0.5533769063180828
+      },
+      "any_outlier": {
+        "n": 64,
+        "accuracy": 0.75,
+        "auc": 0.7727272727272727,
+        "prevalence": 0.6875
+      },
+      "no_outlier": {
+        "n": 854,
+        "accuracy": 0.7985948477751756,
+        "auc": 0.8847866931918656,
+        "prevalence": 0.5433255269320844
+      },
+      "per_field": {
+        "trestbps": {
+          "n": 27,
+          "accuracy": 0.6666666666666666,
+          "auc": 0.5941176470588235,
+          "prevalence": 0.6296296296296297
+        },
+        "chol": {
+          "n": 23,
+          "accuracy": 0.7391304347826086,
+          "auc": 0.8076923076923077,
+          "prevalence": 0.5652173913043478
+        },
+        "oldpeak": {
+          "n": 16,
+          "accuracy": 0.875,
+          "auc": 0.8666666666666667,
+          "prevalence": 0.9375
+        }
+      }
+    },
+    "stage1_model": {
+      "overall": {
+        "n": 918,
+        "accuracy": 0.7788671023965141,
+        "auc": 0.838683502976762,
+        "prevalence": 0.5533769063180828
+      },
+      "any_outlier": {
+        "n": 64,
+        "accuracy": 0.71875,
+        "auc": 0.7306818181818182,
+        "prevalence": 0.6875
+      },
+      "no_outlier": {
+        "n": 854,
+        "accuracy": 0.7833723653395784,
+        "auc": 0.8436836870026525,
+        "prevalence": 0.5433255269320844
+      },
+      "per_field": {
+        "trestbps": {
+          "n": 27,
+          "accuracy": 0.6296296296296297,
+          "auc": 0.6882352941176471,
+          "prevalence": 0.6296296296296297
+        },
+        "chol": {
+          "n": 23,
+          "accuracy": 0.6521739130434783,
+          "auc": 0.653846153846154,
+          "prevalence": 0.5652173913043478
+        },
+        "oldpeak": {
+          "n": 16,
+          "accuracy": 0.875,
+          "auc": 0.9333333333333333,
+          "prevalence": 0.9375
+        }
+      }
+    }
+  },
+  "outlier_counts": {
+    "age": 0,
+    "trestbps": 27,
+    "chol": 23,
+    "thalch": 2,
+    "oldpeak": 16
+  },
+  "sweeps": {
+    "n": 32,
+    "jumps_over_0.25": [],
+    "against_clinical_direction": [
+      {
+        "anchor": "Clear present",
+        "field": "age",
+        "model": "full",
+        "swing": 0.017948567867279053,
+        "max_jump": 0.005811512470245361,
+        "spearman": -0.515530535052305,
+        "against_expected": true
+      },
+      {
+        "anchor": "Clear present",
+        "field": "trestbps",
+        "model": "full",
+        "swing": 0.015458941459655762,
+        "max_jump": 0.009892702102661133,
+        "spearman": -0.9534092859001219,
+        "against_expected": true
+      },
+      {
+        "anchor": "Clear absent",
+        "field": "trestbps",
+        "model": "full",
+        "swing": 0.010624714195728302,
+        "max_jump": 0.003666222095489502,
+        "spearman": -0.9084554493572878,
+        "against_expected": true
+      },
+      {
+        "anchor": "Clear absent",
+        "field": "chol",
+        "model": "full",
+        "swing": 0.02254306897521019,
+        "max_jump": 0.011235255748033524,
+        "spearman": -0.9212441180232669,
+        "against_expected": true
+      },
+      {
+        "anchor": "Borderline / missing data",
+        "field": "trestbps",
+        "model": "full",
+        "swing": 0.09752601385116577,
+        "max_jump": 0.05633234977722168,
+        "spearman": -0.9182083174819811,
+        "against_expected": true
+      }
+    ],
+    "worst_jump": 0.1687387228012085
+  },
+  "corners": {
+    "tested": 128,
+    "finite_outputs": 128,
+    "estimate_withheld": 128,
+    "with_hard_implausibility": 104
+  },
+  "guard_examples": [
+    {
+      "input": "age 90, peak HR 200",
+      "result": {
+        "hard": [
+          "Peak heart rate 200 bpm is far above the age-expected maximum (about 130 bpm). Please re-check it."
+        ],
+        "beyond": [
+          "Age (90) is outside the range this model was trained on (28 to 77), so it cannot judge it reliably."
+        ],
+        "outside": [
+          "Peak heart rate (200) is at the edge of the range seen in training (76.92 to 186.04)."
+        ]
+      }
+    },
+    {
+      "input": "cholesterol 520",
+      "result": {
+        "hard": [
+          "Cholesterol 520 mg/dl is extremely high. Please re-check it."
+        ],
+        "beyond": [],
+        "outside": [
+          "Cholesterol (520) is at the edge of the range seen in training (131.01 to 457.59)."
+        ]
+      }
+    },
+    {
+      "input": "age 25 (below the training minimum of 28)",
+      "result": {
+        "hard": [],
+        "beyond": [
+          "Age (25) is outside the range this model was trained on (28 to 77), so it cannot judge it reliably."
+        ],
+        "outside": []
+      }
+    },
+    {
+      "input": "typical values: age 52, BP 130, chol 210",
+      "result": {
+        "hard": [],
+        "beyond": [],
+        "outside": []
+      }
+    }
+  ]
+}

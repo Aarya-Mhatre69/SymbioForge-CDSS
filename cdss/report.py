@@ -18,8 +18,11 @@ def build_report(r: dict, a: dict | None = None) -> str:
     exp = "".join(f"<tr><td>{e(x['label'])}</td><td>{x['value']:.3g}</td><td>{x['shap']:+.2f}</td><td>{e(x['direction'])}</td></tr>"
                   for x in r["explanation"])
     warns = "".join(f"<div class='warn'>{e(w)}</div>" for w in c["warnings"]) or "<p>No reliability warnings.</p>"
+    ok = r.get("estimate_reliable", True)
     cf = r["counterfactual"]
-    if cf["found"]:
+    if not ok:
+        cft = "<p>Withheld: some inputs are outside the range the model can judge reliably.</p>"
+    elif cf["found"]:
         def fmt(x):
             return "; ".join(f"{k}: {v['from']} to {v['to']}" for k, v in x["changes"].items()) + f" (new P={x['new_probability']:.0%})"
         cft = (f"<p>Model sensitivity, modifiable factors only (+-30%): {e(fmt(cf['actionable']))}</p>" if cf["actionable"] else
@@ -30,23 +33,44 @@ def build_report(r: dict, a: dict | None = None) -> str:
     adv = ""
     if r["advice"]["needed"]:
         adv = "<h2>Suggested next tests</h2><ul>" + "".join(
-            f"<li>{e(x['test'])} (cost {x['cost']}): P ranges {x['p_min']:.0%} to {x['p_max']:.0%}"
-            f"{' - could change the verdict' if x['can_flip_verdict'] else ''}</li>" for x in r["advice"]["ranking"]) + "</ul>"
+            f"<li>{e(x['test'])} (cost {x['cost']})"
+            + (f": P ranges {x['p_min']:.0%} to {x['p_max']:.0%}{' - could change the verdict' if x['can_flip_verdict'] else ''}" if ok else "")
+            + "</li>" for x in r["advice"]["ranking"]) + "</ul>"
+    res_line = (f"Disease {e(r['verdict'])} - P(disease) = {r['models']['xgb']:.0%} (XGBoost), {r['models']['dnn']:.0%} (DNN)"
+                if r.get("estimate_reliable", True) else "Estimate withheld: some inputs are outside the range the model can judge reliably.")
     ov = ""
     if a:
         dom = "".join(f"<tr><td>{e(d['domain'])}</td><td>{'raises' if d['impact'] > 0 else 'lowers'} the estimate ({d['impact']:+.2f})</td></tr>" for d in a["domains"])
         qs = "".join(f"<li>{e(q)}</li>" for q in a["questions"])
-        ov = (f"<h2>Overview</h2><p class='v'>{e(a['tier_info']['label'])} - about {a['p']:.0%}</p><p>{e(a['headline'])}</p>"
+        ov = (f"<h2>Overview</h2><p class='v'>{e(a['tier_info']['label'])}{f' - about {a[chr(112)]:.0%}' if ok else ''}</p><p>{e(a['headline'])}</p>"
               f"<h2>What moved the estimate</h2><table>{dom}</table><h2>Questions to ask your doctor</h2><ul>{qs}</ul>")
     return f"""<!doctype html><html><head><meta charset='utf-8'><title>CDSS report</title><style>{CSS}</style></head><body>
 <h1>SymbioForge CDSS - Clinical decision support report</h1><small>Generated {dt.datetime.now():%Y-%m-%d %H:%M}</small>
 <div class='disc'><b>{e(r['disclaimer'])}</b></div>
-{ov}<h2>Model details</h2><p class='v'>Disease {e(r['verdict'])} - P(disease) = {r['models']['xgb']:.0%} (XGBoost), {r['models']['dnn']:.0%} (DNN)</p>
+{ov}<h2>Model details</h2><p class='v'>{res_line}</p>
 <p>Confidence: <b>{e(c['band'])}</b>. Conformal set at {c['conformal_level']:.0%}: {e(' / '.join(c['conformal_set']))}.
 Validation accuracy in this confidence band: {c['validation_accuracy_in_band'] if c['validation_accuracy_in_band'] is None else format(c['validation_accuracy_in_band'], '.0%')} (n={c['validation_n_in_band']}).</p>
-<p>{e(r['summary'])}</p><h2>Warnings</h2>{warns}
+<p>{e(r['summary']) if ok else 'No model estimate is given for these inputs.'}</p><h2>Warnings</h2>{warns}
 <h2>Rule base cross-check</h2><p>Verdict: {e(rl['verdict'])}. Fired: {e(', '.join(rl['fired']) or 'none')}. Unknown (missing inputs): {e(', '.join(rl['unknown']) or 'none')}.</p>
-<h2>Top contributing factors (SHAP, XGBoost)</h2><table><tr><th>Factor</th><th>Value</th><th>SHAP</th><th>Effect</th></tr>{exp}</table>
+<h2>Top contributing factors (SHAP, XGBoost)</h2>{('<table><tr><th>Factor</th><th>Value</th><th>SHAP</th><th>Effect</th></tr>' + exp + '</table>') if ok else '<p>Withheld for these inputs.</p>'}
 <h2>What would change the estimate</h2>{cft}{adv}<h2>Inputs</h2><table>{inp}</table>
 <div class='disc'>{e(r['disclaimer'])} Probabilities come from models trained on the public UCI Heart Disease dataset and do not replace clinical judgement.</div>
 </body></html>"""
+
+
+def build_report_stage1(ctx: dict) -> str:
+    """Stage-1 (home checkup) report: tier only, no probability."""
+    r, a = ctx["result"], ctx["analysis"]
+    cards = "".join(f"<tr><td>{e(c['label'])}</td><td>{e(c['value'])}</td><td>{e(c['note'])}</td></tr>" for c in a["cards"])
+    drv = "".join(f"<tr><td>{e(d['label'])}: {e(d['value'])}</td><td>{e(d['direction'])} the pattern match</td></tr>" for d in a["drivers"])
+    steps = "".join(f"<li>{e(s)}</li>" for s in a["next"]["steps"])
+    qs = "".join(f"<li>{e(q)}</li>" for q in a["questions"])
+    warns = "".join(f"<div class='warn'>{e(w)}</div>" for w in r["confidence"]["warnings"])
+    return f"""<!doctype html><html><head><meta charset='utf-8'><title>SymbioForge stage-1 report</title><style>{CSS}</style></head><body>
+<h1>SymbioForge - Stage 1 (home checkup) report</h1><small>Generated {dt.datetime.now():%Y-%m-%d %H:%M}</small>
+<div class='disc'><b>{e(r['disclaimer'])}</b></div>
+<h2>Result</h2><p class='v'>{e(a['tier_info']['label'])}</p><p>{e(a['headline'])}</p>
+<p>Confidence: <b>{e(r['confidence']['band'])}</b>. This stage shows a tier, not a probability: the model was trained on patients referred for heart tests.</p>{warns}
+<h2>What influenced it</h2><table>{drv}</table><h2>Your measurements</h2><table>{cards}</table>
+<h2>What to do</h2><ul>{steps}</ul><h2>Questions to ask your doctor</h2><ul>{qs}</ul>
+<div class='disc'>{e(r['disclaimer'])}</div></body></html>"""
