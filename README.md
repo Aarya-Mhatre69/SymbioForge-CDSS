@@ -152,9 +152,16 @@ Run the rebuild scripts in that order. `train.py` overwrites `artifacts/`, `data
 | `docs/` | `SymbioForge_Final_Project_Report.docx/.pdf` (the submission report), `PROJECT_REPORT.md`, `DELIVERABLES.md` |
 | `SPEC.md`, `ARCHITECTURE.md`, `PLAN.md`, `context.md` | Requirements, design and decision log, plan, prior-task reference |
 
-## Deploy
+## Deploy: one public link
 
-Push to GitHub, then create an app on Streamlit Community Cloud with main file `app.py` (Python 3.11+, `requirements.txt` only; no secrets, nothing stored).
+The clinic website is the single link to share. Its button takes visitors to the deployed app, and the app links back.
+
+1. **App (Streamlit Community Cloud).** Create or repoint the app `https://symbioforge.streamlit.app/` to this repository: main file `app.py`, Python 3.11+, `requirements.txt` only (no torch/TensorFlow at runtime). No API keys.
+   After step 2, add the clinic's address under app Settings -> Secrets: `CLINIC_URL = "https://<user>.github.io/<repo>"` (see `.streamlit/secrets.toml.example`).
+2. **Clinic site (GitHub Pages).** Push to GitHub, then in the repository go to Settings -> Pages -> Source -> **GitHub Actions**. The workflow `.github/workflows/clinic-pages.yml` publishes the `clinic/` folder on every push that changes it. The public address is `https://<user>.github.io/<repo>/`.
+3. **Share the clinic address.** Its "Continue to the heart health check" button opens `https://symbioforge.streamlit.app/?from=clinic` when the site is hosted (and `http://localhost:8501` when opened locally; see `clinic/config.js`).
+
+Free Streamlit apps go to sleep after a period of inactivity and show a "wake up" button; open the app once before a demo. Nothing is stored and no secrets are needed beyond the optional `CLINIC_URL`.
 
 ## Limitations
 

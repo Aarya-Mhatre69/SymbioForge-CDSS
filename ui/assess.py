@@ -12,7 +12,7 @@ from cdss.orchestrator import assess
 from cdss.report import build_report
 from cdss.schemas import PatientInput, field_errors
 from . import style
-from .config import CLINIC_NAME, CLINIC_URL
+from .config import CLINIC_NAME, clinic_url
 
 RAW = ["age", "sex", "cp", "trestbps", "chol", "fbs", "restecg", "thalch", "exang", "oldpeak", "slope", "ca", "thal"]
 NA = "Not done / don't know"
@@ -354,10 +354,10 @@ def result():
         st.markdown("**Questions to ask your doctor**")
         for qn in a["questions"]:
             st.markdown(f"- {qn}")
-        if ss.get("from_clinic"):
+        if ss.get("from_clinic") and clinic_url():
             b1, b2 = st.columns(2)
-            b1.link_button("Book a home checkup", f"{CLINIC_URL}/book.html", type="primary", use_container_width=True)
-            b2.link_button(f"Back to {CLINIC_NAME}", f"{CLINIC_URL}/index.html", use_container_width=True)
+            b1.link_button("Book a home checkup", f"{clinic_url()}/book.html", type="primary", use_container_width=True)
+            b2.link_button(f"Back to {CLINIC_NAME}", f"{clinic_url()}/index.html", use_container_width=True)
         d1, d2 = st.columns(2)
         d1.download_button("Download report", build_report(r, a), "symbioforge_report.html", "text/html", type="primary")
         if d2.button("Start over"):

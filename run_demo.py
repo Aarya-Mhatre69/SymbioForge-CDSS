@@ -3,6 +3,7 @@ Starts the SymbioForge app (8501) and the demo clinic website (8600), then opens
 Press Ctrl+C to stop both."""
 from __future__ import annotations
 
+import os
 import socket
 import subprocess
 import sys
@@ -40,7 +41,8 @@ def main() -> int:
                                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL))
         procs.append(subprocess.Popen([sys.executable, "-m", "streamlit", "run", str(ROOT / "app.py"), "--server.port", str(APP_PORT),
                                        "--server.headless", "true", "--browser.gatherUsageStats", "false"],
-                                      cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL))
+                                      cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                                      env={**os.environ, "SYMBIOFORGE_CLINIC_URL": f"http://localhost:{CLINIC_PORT}"}))
         print("Starting the demo clinic website and the SymbioForge app ...")
         if not (wait(CLINIC_PORT, "Clinic site") and wait(APP_PORT, "SymbioForge app")):
             return 1

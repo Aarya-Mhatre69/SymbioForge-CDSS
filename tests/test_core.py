@@ -168,8 +168,9 @@ def test_no_constant_imputed_chol_artifact():
     assert len(imputed) == 0 or imputed.chol.nunique() > 20  # imputed values must not collapse to one constant
 
 
-def test_clinic_round_trip_links():
+def test_clinic_round_trip_links(monkeypatch):
     from streamlit.testing.v1 import AppTest
+    monkeypatch.setenv("SYMBIOFORGE_CLINIC_URL", "http://localhost:8600")
     at = AppTest.from_file(str(ROOT / "app.py"), default_timeout=60)
     at.query_params["from"] = "clinic"
     at.run()
@@ -179,12 +180,18 @@ def test_clinic_round_trip_links():
     assert not at.exception and at.session_state["stage"] == "result"
     at2 = AppTest.from_file(str(ROOT / "app.py"), default_timeout=60).run()      # no ?from=clinic: no back link
     assert not any("Back to Meridian" in m.value for m in at2.markdown)
+    monkeypatch.delenv("SYMBIOFORGE_CLINIC_URL")                                 # no clinic address configured: no dead links
+    at3 = AppTest.from_file(str(ROOT / "app.py"), default_timeout=60)
+    at3.query_params["from"] = "clinic"
+    at3.run()
+    assert not at3.exception and not any("Back to Meridian" in m.value for m in at3.markdown)
 
 
 def test_clinic_site_wiring():
     import re
     c = ROOT / "clinic"
-    assert "localhost:8501" in (c / "config.js").read_text()
+    cfg = (c / "config.js").read_text()
+    assert "localhost:8501" in cfg and "https://symbioforge.streamlit.app" in cfg
     for page in ("index.html", "services.html", "heart-check.html", "book.html"):
         html = (c / page).read_text(encoding="utf-8")
         assert "config.js" in html and "app.js" in html and "styles.css" in html, page
