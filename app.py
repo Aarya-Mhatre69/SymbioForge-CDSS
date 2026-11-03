@@ -4,7 +4,7 @@ from html import escape
 
 import streamlit as st
 
-from ui import assess, mechanics, style
+from ui import assess, style
 from ui.config import CLINIC_NAME, clinic_url
 
 st.set_page_config(page_title="SymbioForge", page_icon="❤", layout="wide")
@@ -17,6 +17,7 @@ back = (f"<a class='backlink' href='{escape(CLINIC)}/index.html'>&larr; Back to 
 st.markdown(f"<div class='brand'><b>SymbioForge</b><span>Heart-health decision support</span><span style='margin-left:auto'>{back}</span></div>", unsafe_allow_html=True)
 view = st.segmented_control("View", ["Health check", "How it works"], default="Health check", key="view", label_visibility="collapsed")
 if view == "How it works":
+    from ui import mechanics  # heavy view: loaded only when opened
     mechanics.render()
 else:
     assess.render()

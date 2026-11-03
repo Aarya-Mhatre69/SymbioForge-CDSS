@@ -1,15 +1,12 @@
 """User-facing flow: guided chat intake -> analytical overview -> follow-up chat."""
 from __future__ import annotations
 
-import plotly.graph_objects as go
 import streamlit as st
 from pydantic import ValidationError
 
 from cdss import DISCLAIMER, chat
-from cdss.engine import DEMO_PATIENTS
+from cdss.demo import DEMO_PATIENTS
 from cdss.glossary import FIELDS, TEST_PLAIN
-from cdss.orchestrator import assess
-from cdss.report import build_report
 from cdss.schemas import PatientInput, field_errors
 from . import style
 from .config import CLINIC_NAME, clinic_url
@@ -175,6 +172,7 @@ def go_result(raw: dict):
     except ValidationError as ex:
         st.error("Please check these answers:\n\n" + "\n".join(f"- **{k}**: {v}" for k, v in field_errors(ex).items()))
         return
+    from cdss.orchestrator import assess  # heavy: loads the models on first analysis
     st.session_state.ctx = assess(patient)
     st.session_state.stage = "result"
     st.session_state.chat = []
@@ -250,7 +248,13 @@ def intake():
             st.rerun()
 
 
+def _report_html(r, a):
+    from cdss.report import build_report
+    return build_report(r, a)
+
+
 def _domain_chart(domains):
+    import plotly.graph_objects as go
     ds = list(reversed(domains))
     fig = go.Figure(go.Bar(x=[d["impact"] for d in ds], y=[d["domain"] for d in ds], orientation="h",
                            marker_color=["#c0504d" if d["impact"] > 0 else "#2b6cb0" for d in ds]))
@@ -261,6 +265,7 @@ def _domain_chart(domains):
 
 
 def _curve_chart(c, field):
+    import plotly.graph_objects as go
     f = FIELDS[field]
     fig = go.Figure()
     fig.add_trace(go.Scatter(x=c["x"], y=c["p"], mode="lines", line=dict(color="#1f5f8b", width=2.5, shape="hv"), name="estimate"))
@@ -359,7 +364,7 @@ def result():
             b1.link_button("Book a home checkup", f"{clinic_url()}/book.html", type="primary", width="stretch")
             b2.link_button(f"Back to {CLINIC_NAME}", f"{clinic_url()}/index.html", width="stretch")
         d1, d2 = st.columns(2)
-        d1.download_button("Download report", build_report(r, a), "symbioforge_report.html", "text/html", type="primary")
+        d1.download_button("Download report", _report_html(r, a), "symbioforge_report.html", "text/html", type="primary")
         if d2.button("Start over"):
             reset()
             st.rerun()

@@ -5,7 +5,3 @@ backgroundColor = "#faf9f7"
 secondaryBackgroundColor = "#f1eee9"
 textColor = "#1f2933"
 font = "sans serif"
-[server]
-headless = true
-[browser]
-gatherUsageStats = false
