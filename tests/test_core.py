@@ -199,3 +199,38 @@ def test_clinic_site_wiring():
             assert (c / href).exists(), (page, href)
     hc = (c / "heart-check.html").read_text(encoding="utf-8")
     assert "data-app-link" in hc and "<iframe" not in hc
+
+
+def test_how_it_works_sections_render_fast_and_light():
+    import time
+    from streamlit.testing.v1 import AppTest
+    at = AppTest.from_file(str(ROOT / "app.py"), default_timeout=90).run()
+    at.segmented_control(key="view").set_value("How it works").run()
+    assert not at.exception
+    for sec in ("Architecture", "Prediction internals", "Evaluation", "Data (EDA)", "Limits and decisions"):
+        t0 = time.perf_counter()
+        at.segmented_control(key="how_section").set_value(sec).run()
+        assert not at.exception, sec
+        assert len(at.markdown) > 2, sec
+        assert time.perf_counter() - t0 < 8, sec                                # generous bound; typically well under 1 s
+    assert not at.dataframe and not at.metric                                   # no heavy data-grid / metric components
+
+
+def test_lite_helpers_escape_and_render():
+    from ui import lite
+    h = lite.table([["<script>alert(1)</script>", 1.5]], ["a", "b"], num_cols=(1,))
+    assert "<script>" not in h and "&lt;script&gt;" in h and "class='n'" in h
+    b = lite.bars([("x", 0.5), ("y", -0.25)])
+    assert "<b style='left:50%" in b and "+0.50" in b and "-0.25" in b
+    svg = lite.curve([1, 2, 3, 4], [0.1, 0.4, 0.6, 0.9], 3, "Cholesterol")
+    assert svg.startswith("<svg") and "<path" in svg and svg.count("<circle") == 1
+    assert "data:image/png;base64," in lite.img(ROOT / "reports" / "figures" / "roc.png", "ROC", 300)
+
+
+def test_result_page_uses_light_charts_only():
+    from streamlit.testing.v1 import AppTest
+    at = AppTest.from_file(str(ROOT / "app.py"), default_timeout=90).run()
+    at.button(key="ex_Clear present").click().run()
+    html = " ".join(m.value for m in at.markdown)
+    assert "lt-bars" in html and "<svg" in html and "plotly" not in html.lower()
+    assert not at.dataframe and not at.metric

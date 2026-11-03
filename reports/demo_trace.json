@@ -1,0 +1,122 @@
+{
+ "example": "Borderline, tests missing",
+ "trace": [
+  {
+   "agent": "Intake agent",
+   "task": "Task 4 data preparation",
+   "ms": 0.016300007700920105,
+   "note": "validated 13 fields; 3 optional field(s) missing, filled and flagged"
+  },
+  {
+   "agent": "Feature agent",
+   "task": "Task 5 feature engineering",
+   "ms": 15.031799994176254,
+   "note": "built the 12 model features in fixed order"
+  },
+  {
+   "agent": "Risk model (XGBoost)",
+   "task": "Task 6 machine learning",
+   "ms": 5.859999990207143,
+   "note": "P(disease) = 66%"
+  },
+  {
+   "agent": "Second-opinion model (DNN)",
+   "task": "Task 7 deep learning",
+   "ms": 1.8854999943869188,
+   "note": "P(disease) = 70%"
+  },
+  {
+   "agent": "Clinical rules agent",
+   "task": "Tasks 1-2 knowledge + rule base",
+   "ms": 0.034199998481199145,
+   "note": "verdict undetermined; fired none; unknown R3"
+  },
+  {
+   "agent": "Trust agent",
+   "task": "Task 8 trust score + conformal",
+   "ms": 0.031400006264448166,
+   "note": "confidence low; 3 warning(s)"
+  },
+  {
+   "agent": "Explainer agent (SHAP)",
+   "task": "Task 8 explainability",
+   "ms": 5.338900009519421,
+   "note": "exact per-feature contributions"
+  },
+  {
+   "agent": "What-if agent",
+   "task": "Task 8 counterfactuals",
+   "ms": 37.13430000061635,
+   "note": "found a flip"
+  },
+  {
+   "agent": "Test planner (A*)",
+   "task": "Task 3 state-space search",
+   "ms": 136.3192999997409,
+   "note": "plan: slope, ca"
+  },
+  {
+   "agent": "Synthesizer",
+   "task": "Task 9 integration",
+   "ms": 34.004300003289245,
+   "note": "combined all findings into the patient overview"
+  }
+ ],
+ "rules": {
+  "fired": [],
+  "unknown": [
+   "R3"
+  ],
+  "state": {
+   "R1": false,
+   "R2": false,
+   "R3": null,
+   "R4": false,
+   "R5": false,
+   "R6": false
+  },
+  "verdict": "undetermined",
+  "agrees_with_ml": null
+ },
+ "features": {
+  "cp_asymptomatic": 0.0,
+  "exang": 1.0,
+  "oldpeak_slope_risk": 3.0,
+  "cardiac_risk_score": 4.0,
+  "thalch": 130.0,
+  "cp_atypical angina": 0.0,
+  "oldpeak": 1.5,
+  "chol": 250.0,
+  "hr_reserve": 38.0,
+  "rate_pressure_product": 18200.0,
+  "age": 52.0,
+  "chol_age_ratio": 4.8076923076923075
+ },
+ "shap_all": {
+  "cp_asymptomatic": -0.7247476577758789,
+  "exang": 0.255262553691864,
+  "oldpeak_slope_risk": 0.18406763672828674,
+  "cardiac_risk_score": 0.602910578250885,
+  "thalch": -0.05197656527161598,
+  "cp_atypical angina": 0.09211138635873795,
+  "oldpeak": -0.03383166342973709,
+  "chol": 0.00105569651350379,
+  "hr_reserve": -0.025823289528489113,
+  "rate_pressure_product": 0.051571398973464966,
+  "age": 0.042528532445430756,
+  "chol_age_ratio": 0.03690683841705322
+ },
+ "models": {
+  "xgb": 0.6558820605278015,
+  "dnn": 0.7031959731294097
+ },
+ "verdict": "present",
+ "confidence": {
+  "band": "low",
+  "conformal_set": [
+   "absent",
+   "present"
+  ],
+  "conformal_level": 0.9
+ }
+}

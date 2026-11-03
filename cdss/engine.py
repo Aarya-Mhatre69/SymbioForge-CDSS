@@ -15,13 +15,7 @@ from .features import FEATURES, OPTIONAL, engineer
 from .schemas import TRAIN_AGE_RANGE, PatientInput
 
 THRESHOLD = 0.5
-LABELS = {
-    "cp_asymptomatic": "asymptomatic chest pain", "exang": "exercise-induced angina",
-    "oldpeak_slope_risk": "ST depression x slope", "cardiac_risk_score": "cardiac risk score",
-    "thalch": "max heart rate", "cp_atypical angina": "atypical angina", "oldpeak": "ST depression",
-    "chol": "cholesterol", "hr_reserve": "heart-rate reserve", "rate_pressure_product": "rate-pressure product",
-    "age": "age", "chol_age_ratio": "cholesterol / age",
-}
+from .demo import LABELS  # noqa: E402,F401  (kept free of heavy imports so the UI can use it)
 MODIFIABLE = {"chol", "trestbps"}
 PLAUSIBLE = 0.30  # modifiable factors may move at most +-30% in the actionable search
 CF_GRID = {

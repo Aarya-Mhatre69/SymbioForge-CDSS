@@ -10,6 +10,23 @@ h1,h2,h3{letter-spacing:-.01em}
 .brand{display:flex;align-items:baseline;gap:.6rem;margin-bottom:.2rem}
 .brand b{font-size:1.45rem;letter-spacing:-.02em}.brand span{color:var(--muted);font-size:.92rem}
 .backlink{font-size:.85rem;color:var(--accent)!important;text-decoration:none}.backlink:hover{text-decoration:underline}
+.lt-wrap{overflow-x:auto;margin:.3rem 0 .9rem}
+table.lt{border-collapse:collapse;width:100%;font-size:.88rem;background:var(--card);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+table.lt th{background:var(--accent);color:#fff;text-align:left;font-weight:600;padding:.4rem .6rem}
+table.lt td{padding:.35rem .6rem;border-top:1px solid var(--line);vertical-align:top}
+table.lt tr:nth-child(even) td{background:#f6f8fb}
+table.lt .n{text-align:right;font-variant-numeric:tabular-nums}
+.lt-kpis{display:flex;gap:.7rem;flex-wrap:wrap;margin:.2rem 0 .9rem}
+.lt-kpi{flex:1;min-width:150px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:.7rem .9rem}
+.lt-kpi .v{font-size:1.6rem;font-weight:650;letter-spacing:-.02em;line-height:1.15}.lt-kpi .l{color:var(--muted);font-size:.82rem}
+.lt-fig{margin:.3rem 0 .8rem;text-align:center}.lt-fig img{max-width:100%;height:auto;border:1px solid var(--line);border-radius:10px;background:#fff}
+.lt-fig .cap{color:var(--muted);font-size:.8rem;margin-top:.25rem}
+.lt-2{display:grid;grid-template-columns:1fr 1fr;gap:.8rem}@media(max-width:700px){.lt-2{grid-template-columns:1fr}}
+.lt-bars{margin:.2rem 0 .8rem}.lt-bars .br{display:grid;grid-template-columns:minmax(120px,34%) 1fr 52px;gap:.5rem;align-items:center;margin:.22rem 0;font-size:.85rem}
+.lt-bars .bt{position:relative;height:16px;background:var(--soft);border-radius:8px}.lt-bars .bt b{position:absolute;top:0;height:100%;border-radius:8px}
+.lt-bars .bt .mid{position:absolute;left:50%;top:-2px;height:20px;width:1px;background:#999}.lt-bars .bv{color:var(--muted);text-align:right;font-variant-numeric:tabular-nums}
+.lt-bars .ax{color:var(--muted);font-size:.75rem;text-align:center;margin-top:.3rem}
+.lt-svg{width:100%;height:auto;max-height:300px;background:#fff;border:1px solid var(--line);border-radius:10px}
 .stepper{display:flex;gap:6px;margin:.6rem 0 1rem}
 .stepper i{flex:1;height:4px;border-radius:4px;background:var(--line)}.stepper i.on{background:var(--accent)}
 .steplabel{color:var(--muted);font-size:.82rem;margin-top:-.4rem;margin-bottom:.4rem}

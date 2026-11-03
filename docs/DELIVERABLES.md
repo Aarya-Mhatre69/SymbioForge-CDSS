@@ -45,6 +45,6 @@ Legend: [x] produced here · [~] regenerated on the supplied dataset, needs your
 | Responsible AI report | [x] section 6 |
 | User manual | [x] section 7 |
 | SRS / SDD | [x] SPEC.md (requirements), ARCHITECTURE.md (design), section 2 |
-| Testing report | [x] section 4 (22 automated tests) |
+| Testing report | [x] section 4 (25 automated tests) |
 | Final project report | [x] PROJECT_REPORT.md |
 | Deployment guide | [x] section 8 |

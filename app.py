@@ -21,3 +21,21 @@ if view == "How it works":
     mechanics.render()
 else:
     assess.render()
+
+
+@st.cache_resource(show_spinner=False)
+def _warm():
+    """Load the models in the background after the page is drawn, so the first analysis starts instantly."""
+    import threading
+
+    def go():
+        try:
+            from cdss.engine import get_engine
+            get_engine()
+        except Exception:
+            pass
+    threading.Thread(target=go, daemon=True).start()
+    return True
+
+
+_warm()

@@ -8,7 +8,7 @@ from cdss import DISCLAIMER, chat
 from cdss.demo import DEMO_PATIENTS
 from cdss.glossary import FIELDS, TEST_PLAIN
 from cdss.schemas import PatientInput, field_errors
-from . import style
+from . import lite, style
 from .config import CLINIC_NAME, clinic_url
 
 RAW = ["age", "sex", "cp", "trestbps", "chol", "fbs", "restecg", "thalch", "exang", "oldpeak", "slope", "ca", "thal"]
@@ -253,30 +253,6 @@ def _report_html(r, a):
     return build_report(r, a)
 
 
-def _domain_chart(domains):
-    import plotly.graph_objects as go
-    ds = list(reversed(domains))
-    fig = go.Figure(go.Bar(x=[d["impact"] for d in ds], y=[d["domain"] for d in ds], orientation="h",
-                           marker_color=["#c0504d" if d["impact"] > 0 else "#2b6cb0" for d in ds]))
-    fig.update_layout(height=210, margin=dict(l=0, r=10, t=6, b=30), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-                      xaxis=dict(title="lowers the estimate  ←   →  raises the estimate", zeroline=True, zerolinecolor="#999", showgrid=False, showticklabels=False),
-                      yaxis=dict(showgrid=False))
-    return fig
-
-
-def _curve_chart(c, field):
-    import plotly.graph_objects as go
-    f = FIELDS[field]
-    fig = go.Figure()
-    fig.add_trace(go.Scatter(x=c["x"], y=c["p"], mode="lines", line=dict(color="#1f5f8b", width=2.5, shape="hv"), name="estimate"))
-    fig.add_hline(y=0.5, line_dash="dot", line_color="#999")
-    cur = min(range(len(c["x"])), key=lambda k: abs(c["x"][k] - c["current"]))
-    fig.add_trace(go.Scatter(x=[c["current"]], y=[c["p"][cur]], mode="markers", marker=dict(size=12, color="#c0504d"), name="you"))
-    fig.update_layout(height=280, margin=dict(l=0, r=0, t=10, b=0), showlegend=False, paper_bgcolor="rgba(0,0,0,0)",
-                      xaxis_title=f"{f['label']} ({f['unit']})" if f["unit"] else f["label"], yaxis=dict(title="Model-estimated chance", tickformat=".0%", range=[0, 1]))
-    return fig
-
-
 def result():
     ss = st.session_state
     ctx = ss.ctx
@@ -302,7 +278,7 @@ def result():
     tabs = st.tabs(["Why this result", "Your measurements", "What-if", "Next steps"])
     with tabs[0]:
         st.markdown("**Which parts of your profile moved the estimate**")
-        st.plotly_chart(_domain_chart(a["domains"]), width="stretch", config={"displayModeBar": False})
+        lite.show(lite.bars([(d["domain"], d["impact"]) for d in a["domains"]], axis="lowers the estimate  ←   →  raises the estimate"))
         st.markdown("**The biggest individual influences**")
         html = "".join(f"<div class='drv'><div class='dot' style='background:{'#c0504d' if d['shap'] > 0 else '#2b6cb0'}'></div>"
                        f"<div><b>{d['label']}</b>: {d['value']}<br><span class='note' style='color:#667085;font-size:.85rem'>"
@@ -333,7 +309,8 @@ def result():
         st.caption("Everything else is held at your answers. This shows how the model behaves; it is not a prediction of what treatment would do.")
         pick = st.radio("Change", ["chol", "trestbps", "thalch"], horizontal=True, label_visibility="collapsed",
                         format_func=lambda f: FIELDS[f]["label"], key="w_curve")
-        st.plotly_chart(_curve_chart(a["curves"][pick], pick), width="stretch", config={"displayModeBar": False})
+        cv = a["curves"][pick]
+        lite.show(lite.curve(cv["x"], cv["p"], cv["current"], FIELDS[pick]["label"] + (f" ({FIELDS[pick]['unit']})" if FIELDS[pick]["unit"] else "")))
         st.caption("The red dot is you; the dotted line is the 50% mark.")
         cf = r["counterfactual"]
         if cf["actionable"]:

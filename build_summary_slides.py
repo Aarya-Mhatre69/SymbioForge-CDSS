@@ -132,7 +132,7 @@ kx, ky, kw, kh = 7.15, 2.35, 2.75, 1.5
 kpi(s, kx, ky, kw, kh, f3(ev["models"]["xgb"]["roc_auc"]), f"ROC-AUC, held-out test (n = {ev['models']['xgb']['n']})")
 kpi(s, kx + kw + 0.2, ky, kw, kh, "10", "AI workflows run and traced for every patient")
 kpi(s, kx, ky + kh + 0.2, kw, kh, f"{ev['latency_ms_full_pipeline']['p50']:.0f} ms", "median time for the full pipeline incl. explanation")
-kpi(s, kx + kw + 0.2, ky + kh + 0.2, kw, kh, "22", "automated tests passing")
+kpi(s, kx + kw + 0.2, ky + kh + 0.2, kw, kh, "25", "automated tests passing")
 
 text(s, 0.5, 5.72, 12, 0.3, [("What a visitor experiences", 12, True, MUTED)])
 steps = ["Clinic website", "Guided chat", "Overview + explanation", "Next steps + chat", "Book a home checkup"]
@@ -158,7 +158,6 @@ s = slide()
 header(s, "How it works", "Eight workflows, one orchestrator", 2)
 card(s, 0.5, 1.4, 7.35, 4.35)
 pic(s, DOCF / "architecture.png", 0.6, 1.5, 7.15, 4.1)
-text(s, 0.6, 5.42, 7.15, 0.3, [("Each box is an independent workflow that reports what it did; the orchestrator merges the evidence.", 9.5, False, MUTED)])
 rows = [["Intake agent", "T4", "validate; flag and fill missing tests"],
         ["Feature agent", "T5", "12 features from one formula module"],
         ["Risk model", "T6", "XGBoost probability (the verdict)"],
@@ -195,7 +194,7 @@ text(s, 0.5, 4.55, 5.8, 0.3, [("Seven models compared (5-fold CV on train, then 
 table(s, 0.5, 4.85, 5.75, rows, ["Model", "CV AUC", "Test acc.", "Test AUC"], [2.3, 1.1, 1.15, 1.2], 9.5, 0.25)
 ru, md_, cf = ev["rules"], ev["model_disagreement"], ev["conformal"]
 kw = 2.1
-kpi(s, 6.5, 4.6, kw, 1.15, pct(ru["ml_accuracy_when_agree"]), f"ML accuracy when expert rules agree ({pct(ru['ml_accuracy_when_disagree'])} when they disagree)", GREEN)
+kpi(s, 6.5, 4.6, kw, 1.15, pct(ru["ml_accuracy_when_agree"]), "ML accuracy when rules agree", GREEN)
 kpi(s, 6.5 + kw + 0.12, 4.6, kw, 1.15, pct(md_["rate"]), "XGBoost and DNN disagree; confidence is lowered", AMBER)
 kpi(s, 6.5 + 2 * (kw + 0.12), 4.6, kw, 1.15, f"{cf['empirical_coverage']:.0%}", f"conformal coverage (target {cf['target']:.0%}); {pct(cf['frac_both'])} flagged 'uncertain'")
 ci = ev["models"]["xgb"]["auc_ci95"]

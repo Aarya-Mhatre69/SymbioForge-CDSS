@@ -52,13 +52,13 @@ For one patient at a time, the system returns:
 | Layer | Tools |
 |---|---|
 | Language | Python 3.11+ |
-| UI / dashboard | Streamlit, Plotly |
+| UI / dashboard | Streamlit (light HTML/SVG charts, no heavy front-end components) |
 | Models | XGBoost (primary, saved as portable JSON), PyTorch-trained DNN served in plain NumPy |
 | Data / ML | pandas, NumPy, scikit-learn (CV, metrics, scaling) |
 | Validation | Pydantic v2 (field-level errors) |
 | Explainability | XGBoost native TreeSHAP, conformal prediction, counterfactual search |
 | Reasoning | Rule-based forward chaining, A* state-space search |
-| Evaluation | pytest (22 tests), matplotlib |
+| Evaluation | pytest (25 tests), matplotlib |
 | Cost | Zero: all open source, runs locally |
 
 ## Flowchart
@@ -120,10 +120,11 @@ The trained models (`artifacts/`) and evaluation outputs (`reports/`) are commit
 
 ```powershell
 pip install -r requirements-train.txt   # adds torch, matplotlib, pytest
-python -m pytest -q                     # 22 tests
+python -m pytest -q                     # 25 tests
 python train.py                         # re-clean, split, train XGBoost + DNN, calibrate trust bands (several minutes)
 python eda.py                           # EDA and correlation report
 python evaluate.py                      # test-set metrics, calibration, fairness, ablation, robustness, latency
+python build_demo_trace.py              # snapshot for the fast 'How it works' view
 python build_docs.py                    # regenerate docs/PROJECT_REPORT.md from the results
 python build_final_report.py            # regenerate the Word final report
 ```

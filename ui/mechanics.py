@@ -1,135 +1,149 @@
-"""'How it works' view for the mentor / examiner: architecture, model internals, evaluation, data, limits."""
+"""'How it works' view for the mentor / examiner: architecture, model internals, evaluation, data, limits.
+Fast by design: one section is rendered at a time, nothing runs a model (a stored snapshot is used), and only light HTML is drawn."""
 from __future__ import annotations
 
 import json
 
-import plotly.graph_objects as go
 import streamlit as st
 
-from cdss import REPORTS, ROOT
-from cdss.engine import DEMO_PATIENTS, LABELS, get_engine
-from cdss.orchestrator import assess
+from cdss import ARTIFACTS, REPORTS, ROOT
+from cdss.demo import LABELS
 from cdss.rules import RULES
-from cdss.schemas import PatientInput
 
-DOT = """
-digraph G {
-  rankdir=TB; bgcolor="transparent"; nodesep=.3; ranksep=.45;
-  node [shape=box, style="rounded,filled", fillcolor="#eef2f7", color="#9fb3c8", fontname="Helvetica", fontsize=12, margin="0.14,0.08"];
-  edge [color="#8a99a8", arrowsize=.7];
-  user [label="User\\n(chat intake)", fillcolor="#fff"];
-  intake [label="Intake agent\\nTask 4: validate,\\nflag missing"];
-  feat [label="Feature agent\\nTask 5: 12 features"];
-  orch [label="Orchestrator\\nTask 9: runs the workflows,\\nmerges the evidence", fillcolor="#dbe8f5", color="#1f5f8b"];
-  xgb [label="Risk model\\nTask 6: XGBoost"];
-  dnn [label="Second opinion\\nTask 7: DNN"];
-  rules [label="Clinical rules\\nTasks 1-2: R1-R7"];
-  shap [label="Explainer\\nTask 8: SHAP"];
-  trust [label="Trust agent\\nTask 8: bands,\\nconformal set"];
-  whatif [label="What-if agent\\nTask 8: counterfactuals"];
-  plan [label="Test planner\\nTask 3: A* search"];
-  synth [label="Synthesizer\\nTask 9: overview,\\nquestions, report", fillcolor="#dbe8f5", color="#1f5f8b"];
-  out [label="Overview + chat\\n(Streamlit)", fillcolor="#fff"];
-  user -> intake -> feat -> orch;
-  orch -> xgb; orch -> dnn; orch -> rules;
-  xgb -> shap; xgb -> trust; xgb -> whatif; rules -> plan;
-  dnn -> trust; rules -> trust;
-  shap -> synth; trust -> synth; whatif -> synth; plan -> synth; xgb -> synth; dnn -> synth; rules -> synth;
-  synth -> out;
-}
-"""
+from . import lite
+
+FIG = REPORTS / "figures"
+SECTIONS = ["Architecture", "Prediction internals", "Evaluation", "Data (EDA)", "Limits and decisions"]
+WORKFLOWS = [
+    ("Intake agent", "Task 4", "validates 13 inputs; flags and fills missing optional tests"),
+    ("Feature agent", "Task 5", "builds the 12 model features from one formula module"),
+    ("Risk model (XGBoost)", "Task 6", "probability of disease; gives the verdict"),
+    ("Second opinion (DNN)", "Task 7", "independent deep-learning estimate; flags disagreement"),
+    ("Clinical rules", "Tasks 1-2", "rules R1-R7: fired / not fired / unknown"),
+    ("Test planner (A*)", "Task 3", "picks the cheapest tests that make the rules decisive"),
+    ("Explainer (SHAP)", "Task 8", "exact per-feature contributions"),
+    ("Trust agent", "Task 8", "confidence band and 90% conformal set"),
+    ("What-if agent", "Task 8", "sensitivity to plausible changes"),
+    ("Synthesizer", "Task 9", "overview, doctor questions, report"),
+]
 
 
-def _demo_ctx():
-    if "ctx" in st.session_state:
-        return st.session_state.ctx, "your current assessment"
-    return assess(PatientInput(**DEMO_PATIENTS["Borderline / missing data"])), "the built-in example 'Borderline, tests missing'"
+@st.cache_data(show_spinner=False)
+def _json(name: str, base: str = "reports"):
+    p = (REPORTS if base == "reports" else ARTIFACTS) / name
+    return json.loads(p.read_text(encoding="utf-8")) if p.exists() else None
 
 
-def render():
-    e = get_engine()
-    st.markdown("### How SymbioForge works")
-    st.caption("For reviewers: how the eight earlier workflows are orchestrated into one system, and the evidence behind it.")
-    ctx, which = _demo_ctx()
-    r = ctx["result"]
-    t = st.tabs(["Architecture", "Prediction internals", "Evaluation", "Data (EDA)", "Limits and decisions"])
+@st.cache_data(show_spinner=False)
+def _text(path: str) -> str:
+    from pathlib import Path
+    return Path(path).read_text(encoding="utf-8")
 
-    with t[0]:
-        st.markdown(
-            "SymbioForge is not one classifier. It is **a team of AI workflows from Tasks 1-8 under a single orchestrator**. "
-            "Each workflow is independent and reports what it did; the orchestrator merges their evidence into a patient-level overview.")
-        st.graphviz_chart(DOT, width="stretch")
+
+def _snapshot():
+    """Use the user's own latest analysis if there is one, otherwise the stored example."""
+    ctx = st.session_state.get("ctx")
+    if ctx:
+        r = ctx["result"]
+        return {"trace": r["trace"], "rules": r["rules"], "features": r["features"], "shap_all": r["shap_all"], "models": r["models"],
+                "verdict": r["verdict"], "confidence": r["confidence"]}, "your current assessment"
+    d = _json("demo_trace.json")
+    return d, f"the built-in example '{d['example']}'" if d else ("", "")
+
+
+def _architecture(snap, which):
+    st.markdown("SymbioForge is not one classifier. It is **a team of AI workflows from Tasks 1-8 under a single orchestrator**. "
+                "Each workflow is independent and reports what it did; the orchestrator merges their evidence into a patient-level overview.")
+    arch = ROOT / "docs" / "figures" / "architecture.png"
+    if arch.exists():
+        lite.show(lite.img(arch, "Orchestrated architecture: each box is an independent workflow", 1000))
+    lite.show(lite.table([[a, b, c] for a, b, c in WORKFLOWS], ["Workflow", "From", "What it does"]))
+    if snap:
         st.markdown(f"**Live trace for {which}**")
-        st.dataframe([{"agent": x["agent"], "from": x["task"], "ms": round(x["ms"], 1), "result": x["note"]} for x in r["trace"]],
-                     hide_index=True, width="stretch")
-        st.caption("Design rules: one feature function (no train/serve skew), rules never evaluate guessed inputs, "
-                   "stateless (no patient data stored), deterministic output.")
+        lite.show(lite.table([[x["agent"], x["task"], f"{x['ms']:.0f}", x["note"]] for x in snap["trace"]],
+                             ["Agent", "From", "ms", "Result"], num_cols=(2,)))
+    st.caption("Design rules: one feature function (no train/serve skew), rules never evaluate guessed inputs, "
+               "stateless (no patient data stored), deterministic output.")
 
-    with t[1]:
-        c1, c2, c3 = st.columns(3)
-        c1.metric("XGBoost P(disease)", f"{r['models']['xgb']:.1%}")
-        c2.metric("DNN P(disease)", f"{r['models']['dnn']:.1%}")
-        c3.metric("Verdict (XGBoost at 0.5)", r["verdict"])
-        st.markdown("**Rule base trace** (three-valued: fired / not fired / unknown)")
-        st.dataframe([{"rule": k, "definition": RULES[k].split(" -> ")[0],
-                       "state": "fired" if s else "not fired" if s is False else "unknown"} for k, s in r["rules"]["state"].items()],
-                     hide_index=True, width="stretch")
-        st.markdown("**Engineered features** (exact order fed to the models)")
-        st.dataframe([{"feature": k, "meaning": LABELS[k], "value": round(v, 3), "SHAP": round(r["shap_all"][k], 3)}
-                      for k, v in r["features"].items()], hide_index=True, width="stretch")
-        ex = sorted(r["shap_all"].items(), key=lambda kv: abs(kv[1]))
-        fig = go.Figure(go.Bar(x=[v for _, v in ex], y=[LABELS[k] for k, _ in ex], orientation="h",
-                               marker_color=["#c0504d" if v > 0 else "#2b6cb0" for _, v in ex]))
-        fig.update_layout(height=360, margin=dict(l=0, r=0, t=10, b=0), xaxis_title="SHAP (log-odds)", paper_bgcolor="rgba(0,0,0,0)")
-        st.plotly_chart(fig, width="stretch")
-        c = r["confidence"]
-        st.markdown(f"**Trust layer:** band `{c['band']}`, conformal set `{' / '.join(c['conformal_set'])}` at {c['conformal_level']:.0%}.")
-        st.dataframe([{"confidence range": f"{b['lo']:.2f}-{min(b['hi'], 1):.2f}", "validation patients": b["n"],
-                       "accuracy": None if b["accuracy"] is None else round(b["accuracy"], 3)} for b in e.meta["bands"]],
-                     hide_index=True, width="stretch")
 
-    with t[2]:
-        p = REPORTS / "evaluation.json"
-        if p.exists():
-            ev = json.loads(p.read_text())
-            st.dataframe([{"model": k, **{m: round(v[m], 3) for m in ("accuracy", "precision", "recall", "roc_auc", "brier")}}
-                          for k, v in ev["models"].items()], hide_index=True, width="stretch")
-            g1, g2 = st.columns(2)
-            g1.image(str(REPORTS / "figures" / "roc.png"))
-            g2.image(str(REPORTS / "figures" / "calibration.png"))
-            ci = ev["models"]["xgb"]["auc_ci95"]
-            st.caption(f"Held-out test n = {ev['models']['xgb']['n']}; XGBoost AUC 95% CI {ci[0]:.2f}-{ci[1]:.2f}. Model differences are within noise.")
-            ru = ev["rules"]
-            st.markdown(f"**Cross-checks.** Rules decide {ru['coverage_determinate']:.0%} of patients; when rules and ML agree the ML is right "
-                        f"{ru['ml_accuracy_when_agree']:.0%} of the time, versus {ru['ml_accuracy_when_disagree']:.0%} when they disagree. "
-                        f"That is why disagreement lowers confidence.")
-            st.markdown("**Fairness (test set)**")
-            st.dataframe([{"group": f"{k}: {g}", "n": v["n"], "AUC": round(v["roc_auc"], 3) if v["roc_auc"] else None,
-                           "recall": round(v["recall"], 3), "prevalence": round(v["prevalence"], 2)}
-                          for k, gs in ev["fairness"].items() for g, v in gs.items()], hide_index=True, width="stretch")
-        else:
-            st.info("Run `python evaluate.py` to generate evaluation results.")
+def _internals(snap):
+    if not snap:
+        st.info("Run `python build_demo_trace.py` to create the example snapshot.")
+        return
+    lite.show(lite.kpis([(f"{snap['models']['xgb']:.1%}", "XGBoost P(disease)", "#1f5f8b"), (f"{snap['models']['dnn']:.1%}", "DNN P(disease)", "#1f5f8b"),
+                         (snap["verdict"], "Verdict (XGBoost at 0.5)", "#b7791f")]))
+    st.markdown("**Rule base trace** (three-valued: fired / not fired / unknown)")
+    lite.show(lite.table([[k, RULES[k].split(" -> ")[0], "fired" if s else "not fired" if s is False else "unknown"]
+                          for k, s in snap["rules"]["state"].items()], ["Rule", "Definition", "State"]))
+    st.markdown("**What pushed the estimate** (SHAP, log-odds)")
+    items = sorted(snap["shap_all"].items(), key=lambda kv: -abs(kv[1]))
+    lite.show(lite.bars([(LABELS[k], v) for k, v in items], axis="lowers the estimate  ←   →  raises the estimate"))
+    st.markdown("**Engineered features** (exact order fed to the models)")
+    lite.show(lite.table([[k, LABELS[k], f"{v:.3f}", f"{snap['shap_all'][k]:+.3f}"] for k, v in snap["features"].items()],
+                         ["Feature", "Meaning", "Value", "SHAP"], num_cols=(2, 3)))
+    c = snap["confidence"]
+    st.markdown(f"**Trust layer:** band `{c['band']}`, conformal set `{' / '.join(c['conformal_set'])}` at {c['conformal_level']:.0%}.")
+    meta = _json("meta.json", "artifacts")
+    if meta:
+        lite.show(lite.table([[f"{b['lo']:.2f}-{min(b['hi'], 1):.2f}", b["n"], "-" if b["accuracy"] is None else f"{b['accuracy']:.3f}"]
+                              for b in meta["bands"]], ["Confidence range", "Validation patients", "Accuracy"], num_cols=(1, 2)))
 
-    with t[3]:
-        if (REPORTS / "EDA_report.md").exists():
-            a, b = st.columns(2)
-            a.image(str(REPORTS / "figures" / "eda_correlation.png"), caption="Correlation of the 12 model features")
-            b.image(str(REPORTS / "figures" / "eda_missing_by_site.png"), caption="Missingness depends on the hospital")
-            st.image(str(REPORTS / "figures" / "eda_target_by_category.png"))
-            with st.expander("Full EDA report"):
-                st.markdown("\n".join(ln for ln in (REPORTS / "EDA_report.md").read_text(encoding="utf-8").splitlines() if not ln.startswith("![")))
-        else:
-            st.info("Run `python eda.py` to generate the EDA report.")
 
-    with t[4]:
-        st.markdown("""**Limitations**
+def _evaluation():
+    ev = _json("evaluation.json")
+    if not ev:
+        st.info("Run `python evaluate.py` to generate evaluation results.")
+        return
+    lite.show(lite.table([[k] + [f"{v[m]:.3f}" for m in ("accuracy", "precision", "recall", "roc_auc", "brier")] for k, v in ev["models"].items()],
+                         ["Model", "Accuracy", "Precision", "Recall", "ROC-AUC", "Brier"], num_cols=(1, 2, 3, 4, 5)))
+    lite.show("<div class='lt-2'>" + lite.img(FIG / "roc.png", "ROC curves, held-out test", 520) + lite.img(FIG / "calibration.png", "Reliability diagram", 520) + "</div>")
+    ci = ev["models"]["xgb"]["auc_ci95"]
+    st.caption(f"Held-out test n = {ev['models']['xgb']['n']}; XGBoost AUC 95% CI {ci[0]:.2f}-{ci[1]:.2f}. Model differences are within noise.")
+    ru = ev["rules"]
+    st.markdown(f"**Cross-checks.** Rules decide {ru['coverage_determinate']:.0%} of patients; when rules and ML agree the ML is right "
+                f"{ru['ml_accuracy_when_agree']:.0%} of the time, versus {ru['ml_accuracy_when_disagree']:.0%} when they disagree. That is why disagreement lowers confidence.")
+    st.markdown("**Fairness (test set)**")
+    lite.show(lite.table([[f"{k}: {g}", v["n"], f"{v['roc_auc']:.3f}" if v["roc_auc"] else "-", f"{v['recall']:.3f}", f"{v['prevalence']:.2f}"]
+                          for k, gs in ev["fairness"].items() for g, v in gs.items()], ["Group", "n", "AUC", "Recall", "Prevalence"], num_cols=(1, 2, 3, 4)))
+
+
+def _eda():
+    if not (REPORTS / "EDA_report.md").exists():
+        st.info("Run `python eda.py` to generate the EDA report.")
+        return
+    lite.show("<div class='lt-2'>" + lite.img(FIG / "eda_correlation.png", "Correlation of the 12 model features", 520)
+              + lite.img(FIG / "eda_missing_by_site.png", "Missingness depends on the hospital", 520) + "</div>")
+    lite.show(lite.img(FIG / "eda_target_by_category.png", "Disease rate by category", 900))
+    with st.expander("Full EDA report"):
+        st.markdown("\n".join(ln for ln in _text(str(REPORTS / "EDA_report.md")).splitlines() if not ln.startswith("![")))
+
+
+def _limits():
+    st.markdown("""**Limitations**
 - Historical research data from four hospitals, not current or local patients; not clinically validated.
 - Small test set (138): every metric is approximate.
 - Women and some sites are under-represented; site prevalence differs a lot and confounds missing data.
 - Optional tests (`slope`, `ca`, `thal`) are often missing in training; absent values are filled with the most common value and flagged.
 - Counterfactuals describe the model, not treatment effects. The chat layer is rule-based and can only answer from computed evidence.
 """)
-        arch = (ROOT / "ARCHITECTURE.md").read_text(encoding="utf-8")
-        if "## 5. Decision Log" in arch:
-            st.markdown("**Decision log**")
-            st.markdown(arch.split("## 5. Decision Log", 1)[1])
+    arch = _text(str(ROOT / "ARCHITECTURE.md"))
+    if "## 5. Decision Log" in arch:
+        st.markdown("**Decision log**")
+        st.markdown(arch.split("## 5. Decision Log", 1)[1])
+
+
+def render():
+    st.markdown("### How SymbioForge works")
+    st.caption("For reviewers: how the eight earlier workflows are orchestrated into one system, and the evidence behind it.")
+    sec = st.segmented_control("Section", SECTIONS, default=SECTIONS[0], key="how_section", label_visibility="collapsed") or SECTIONS[0]
+    snap, which = _snapshot()
+    if sec == "Architecture":
+        _architecture(snap, which)
+    elif sec == "Prediction internals":
+        _internals(snap)
+    elif sec == "Evaluation":
+        _evaluation()
+    elif sec == "Data (EDA)":
+        _eda()
+    else:
+        _limits()

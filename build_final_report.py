@@ -164,7 +164,7 @@ para("CELBC710 - Computational Intelligence Laboratory | Semester VII | AY 2026-
 para("Experiments 9 and 10", True, 12, align=C, after=0)
 para("System Integration & Deployment, and Evaluation, Responsible AI & Documentation", True, 12, align=C, after=0)
 para("Final Project Report: SymbioForge, an Intelligent Clinical Decision Support System for Cardiovascular Disease", size=10, align=C, after=0)
-para("Tools: Python, XGBoost, NumPy/PyTorch, Pydantic, Streamlit, Plotly, pytest", size=10, align=C, after=8, color=RGBColor(0x55, 0x55, 0x55))
+para("Tools: Python, XGBoost, NumPy/PyTorch, Pydantic, Streamlit, pytest", size=10, align=C, after=8, color=RGBColor(0x55, 0x55, 0x55))
 
 # ---------------------------------------------------------------- 1
 h1("1. Objective and Summary")
@@ -282,7 +282,7 @@ table([
     ["Dashboard", "Streamlit test runs the guided flow and every example through to the result page, and the How-it-works view", "Pass"],
 ], ["Area", "What is checked", "Result"], [1.2, 5.2, 0.6])
 rb, lat = ev["robustness"], ev["latency_ms_full_pipeline"]
-para(f"22 automated tests pass. Robustness: invalid inputs rejected {rb['invalid_inputs_rejected']}; 300 random valid patients processed without error "
+para(f"25 automated tests pass. Robustness: invalid inputs rejected {rb['invalid_inputs_rejected']}; 300 random valid patients processed without error "
      f"({rb['fuzz_valid_inputs_ok']}). Latency of the full pipeline including SHAP, counterfactual and planner: median {lat['p50']:.0f} ms, 95th percentile "
      f"{lat['p95']:.0f} ms (target under 500 ms). An independent code review found six defects (a constant imputation value that acted as a hidden "
      "disease marker, miscalibrated confidence labels, an ambiguous headline probability, a spec mismatch, misleading 'actionable' counterfactuals and rule "
@@ -371,7 +371,7 @@ table([
 h1("10. Conclusion and Future Enhancements")
 para("The experiments are integrated into one system whose value lies in the combination: eight workflows produce independent evidence, an orchestrator reconciles "
      f"them, and the patient receives an explained, uncertainty-aware overview rather than a bare label. On the held-out test split XGBoost reaches "
-     f"{ev['models']['xgb']['accuracy']:.1%} accuracy and {ev['models']['xgb']['roc_auc']:.3f} AUC, the system answers in about {lat['p50']:.0f} ms, and all 22 automated "
+     f"{ev['models']['xgb']['accuracy']:.1%} accuracy and {ev['models']['xgb']['roc_auc']:.3f} AUC, the system answers in about {lat['p50']:.0f} ms, and all 25 automated "
      "tests pass. The prototype is honest about its limits: small test set, historical single-source data, no clinical validation.")
 para("Future work: repeated cross-validation and site-held-out validation; calibrated probabilities (isotonic); a clinician and user study; an optional language-model "
      "layer for the chat, restricted to the computed analysis; and multilingual support.")
