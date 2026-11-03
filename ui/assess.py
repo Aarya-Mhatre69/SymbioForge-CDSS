@@ -216,7 +216,7 @@ def intake():
         st.markdown("<div class='steplabel' style='margin-top:1rem'>Or try a ready-made example:</div>", unsafe_allow_html=True)
         cols = st.columns(len(EXAMPLES))
         for c, (label, key) in zip(cols, EXAMPLES):
-            if c.button(label, use_container_width=True, key=f"ex_{key}"):
+            if c.button(label, width="stretch", key=f"ex_{key}"):
                 load_example(key)
         return
 
@@ -356,8 +356,8 @@ def result():
             st.markdown(f"- {qn}")
         if ss.get("from_clinic") and clinic_url():
             b1, b2 = st.columns(2)
-            b1.link_button("Book a home checkup", f"{clinic_url()}/book.html", type="primary", use_container_width=True)
-            b2.link_button(f"Back to {CLINIC_NAME}", f"{clinic_url()}/index.html", use_container_width=True)
+            b1.link_button("Book a home checkup", f"{clinic_url()}/book.html", type="primary", width="stretch")
+            b2.link_button(f"Back to {CLINIC_NAME}", f"{clinic_url()}/index.html", width="stretch")
         d1, d2 = st.columns(2)
         d1.download_button("Download report", build_report(r, a), "symbioforge_report.html", "text/html", type="primary")
         if d2.button("Start over"):
@@ -374,7 +374,7 @@ def result():
     sg = st.columns(len(chat.SUGGESTIONS))
     asked = None
     for k, (col, s) in enumerate(zip(sg, chat.SUGGESTIONS)):
-        if col.button(s, key=f"sg{k}", use_container_width=True):
+        if col.button(s, key=f"sg{k}", width="stretch"):
             asked = s
     typed = st.chat_input("Ask a question, for example: what does ECG mean?")
     asked = asked or typed
